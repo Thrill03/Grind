@@ -17,9 +17,6 @@ class Game {
         }
         console.log('Canvas context created');
         
-        // Add mobile detection
-        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
         // Initialize physics
         console.log('Creating Physics instance');
         this.physics = new Physics();
@@ -28,12 +25,6 @@ class Game {
             return;
         }
         console.log('Physics instance created');
-        
-        // Adjust physics for mobile
-        if (this.isMobile) {
-            this.physics.maxSpeed = 7; // Slightly faster movement for mobile
-            this.physics.friction = 0.95; // Less friction for smoother movement
-        }
         
         // Get UI elements
         console.log('Getting UI elements');
@@ -171,68 +162,11 @@ class Game {
         this.lastOilSpawn = 0;
         this.oilSpawnInterval = 8000; // 8 seconds between oil spawns
         
-        // Set up touch controls if mobile
-        if (this.isMobile) {
-            this.setupTouchControls();
-        }
-        
         // Start game loop
         console.log('Starting game loop');
         this.animate();
         
         console.log('Game initialization complete');
-    }
-
-    setupTouchControls() {
-        // Touch state tracking
-        this.touchStartX = 0;
-        this.touchStartY = 0;
-        this.touchMoveX = 0;
-        this.touchMoveY = 0;
-        this.isTouching = false;
-
-        // Touch start event
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.isTouching = true;
-            const touch = e.touches[0];
-            this.touchStartX = touch.clientX;
-            this.touchStartY = touch.clientY;
-        });
-
-        // Touch move event
-        this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (!this.isTouching) return;
-            
-            const touch = e.touches[0];
-            this.touchMoveX = touch.clientX;
-            this.touchMoveY = touch.clientY;
-            
-            // Calculate force based on touch movement
-            const forceX = (this.touchMoveX - this.touchStartX) * 0.1;
-            const forceY = (this.touchMoveY - this.touchStartY) * 0.1;
-            
-            // Apply force to ball
-            this.physics.applyForce(this.ball, forceX, forceY);
-            
-            // Update touch start position for next frame
-            this.touchStartX = this.touchMoveX;
-            this.touchStartY = this.touchMoveY;
-        });
-
-        // Touch end event
-        this.canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.isTouching = false;
-        });
-
-        // Prevent scrolling when touching the canvas
-        this.canvas.addEventListener('touchmove', (e) => {
-            if (this.gameState === 'playing') {
-                e.preventDefault();
-            }
-        }, { passive: false });
     }
 
     resizeCanvas() {
@@ -247,19 +181,13 @@ class Game {
         this.ball.groundY = this.canvas.height - 50;
         this.ball.maxX = this.canvas.width;
         
-        // Adjust sizes for mobile
-        if (this.isMobile) {
-            // Smaller ball on mobile
-            this.originalRadius = Math.min(35, Math.max(25, baseSize * 0.035));
-            // Adjust power-up sizes
-            this.magnetRadius = Math.min(180, Math.max(120, baseSize * 0.25));
-        } else {
-            this.originalRadius = Math.min(45, Math.max(30, baseSize * 0.045));
-            this.magnetRadius = Math.min(225, Math.max(150, baseSize * 0.3));
-        }
-        
+        // Set ball radius proportional to screen size (50% larger)
+        this.originalRadius = Math.min(45, Math.max(30, baseSize * 0.045)); // Increased by 50%
         this.currentRadius = this.originalRadius;
         this.ball.radius = this.currentRadius;
+        
+        // Set magnet radius proportional to screen size (scaled with player size)
+        this.magnetRadius = Math.min(225, Math.max(150, baseSize * 0.3)); // Increased by 50%
         
         // Center ball
         this.ball.x = this.canvas.width / 2;
@@ -659,18 +587,10 @@ class Game {
             // Show countdown during starting state
             if (this.gameState === 'starting') {
                 const timeLeft = Math.ceil((3000 - (Date.now() - this.gameStartTime)) / 1000);
-                this.ctx.fillStyle = this.isMobile ? 'white' : 'white';
-                this.ctx.font = this.isMobile ? '36px Arial' : '48px Arial';
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '48px Arial';
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText(`Starting in ${timeLeft}...`, this.canvas.width / 2, this.canvas.height / 2);
-            }
-
-            // Draw touch controls guide for mobile
-            if (this.isMobile && this.gameState === 'playing') {
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                this.ctx.font = '16px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('Touch and drag to move', this.canvas.width / 2, this.canvas.height - 20);
             }
 
             // Update power-up timer displays
