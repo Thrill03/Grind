@@ -1,57 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
+    <title>Coffee Rush</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The $GRIND don't stop</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #34495e;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        .hud {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+        .score {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .meter {
+            width: 200px;
+            height: 20px;
+            background: #2c3e50;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .meter-fill {
+            width: 100%;
+            height: 100%;
+            background: #e74c3c;
+            transition: width 0.3s;
+        }
+        .power-up-timer {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        #startMenu, #gameOverScreen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            width: 80%;
+            max-width: 400px;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #e74c3c;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 200px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #c0392b;
+        }
+        .leaderboard-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            width: 80%;
+            max-width: 400px;
+        }
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .rank {
+            color: #e74c3c;
+            margin-right: 10px;
+        }
+        @media (max-width: 768px) {
+            .score {
+                font-size: 20px;
+            }
+            .meter {
+                width: 150px;
+                height: 15px;
+            }
+            .power-up-timer {
+                font-size: 14px;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 16px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div class="overlay" id="startMenu">
-            <div class="menu-content">
-                <div class="start-menu-header">
-                    <div class="mascot-container">
-                        <div class="mascot-hamster"></div>
-                    </div>
-                    <div class="title">
-                        <h1 class="title-top">The</h1>
-                        <h1>$GRIND don't stop</h1>
-                    </div>
-                </div>
-                <button id="startButton">Start Game</button>
-                <button id="leaderboardButton">View High Scores</button>
-            </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="hud">
+        <div class="score">Score: 0</div>
+        <div class="meter">
+            <div class="meter-fill"></div>
         </div>
-
-        <div class="overlay" id="leaderboardPopup" style="display: none;">
-            <div class="menu-content">
-                <h2>High Scores</h2>
-                <div id="startLeaderboard" class="leaderboard-list"></div>
-                <button id="closeLeaderboardButton">Close</button>
-            </div>
-        </div>
-
-        <div class="overlay" id="gameOverScreen">
-            <div class="menu-content">
-                <h1>Game Over</h1>
-                <p>Final Score: <span id="finalScore">0</span></p>
-                <div class="leaderboard">
-                    <h2>High Scores</h2>
-                    <div id="gameOverLeaderboard" class="leaderboard-list"></div>
-                </div>
-                <button id="playAgainButton">Play Again</button>
-            </div>
-        </div>
-
-        <div class="hud">
-            <div class="coffee-meter">
-                <div class="meter-fill"></div>
-            </div>
-            <div class="score">Score: 0</div>
-        </div>
+    </div>
+    <div id="startMenu">
+        <h1>Coffee Rush</h1>
+        <button id="startButton">Start Game</button>
+        <button id="leaderboardButton">Leaderboard</button>
+        <div id="startLeaderboard"></div>
+    </div>
+    <div id="gameOverScreen" style="display: none;">
+        <h1>Game Over</h1>
+        <h2>Score: <span id="finalScore">0</span></h2>
+        <button id="playAgainButton">Play Again</button>
+        <div id="gameOverLeaderboard"></div>
+    </div>
+    <div id="leaderboardPopup" class="leaderboard-popup">
+        <h2>Leaderboard</h2>
+        <div id="leaderboardContent"></div>
+        <button id="closeLeaderboardButton">Close</button>
     </div>
     <script src="physics.js"></script>
     <script src="game.js"></script>
