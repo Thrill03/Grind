@@ -39,21 +39,10 @@ class Game {
         this.startLeaderboard = document.getElementById('startLeaderboard');
         this.gameOverLeaderboard = document.getElementById('gameOverLeaderboard');
         this.scoreElement = document.querySelector('.score');
-        
-        if (!this.startMenu || !this.gameOverScreen || !this.startButton || !this.playAgainButton || !this.finalScore || !this.leaderboardButton || !this.leaderboardPopup || !this.closeLeaderboardButton || !this.startLeaderboard || !this.gameOverLeaderboard || !this.scoreElement) {
-            console.error('One or more UI elements not found:', {
-                startMenu: !!this.startMenu,
-                gameOverScreen: !!this.gameOverScreen,
-                startButton: !!this.startButton,
-                playAgainButton: !!this.playAgainButton,
-                finalScore: !!this.finalScore,
-                leaderboardButton: !!this.leaderboardButton,
-                leaderboardPopup: !!this.leaderboardPopup,
-                closeLeaderboardButton: !!this.closeLeaderboardButton,
-                startLeaderboard: !!this.startLeaderboard,
-                gameOverLeaderboard: !!this.gameOverLeaderboard,
-                scoreElement: !!this.scoreElement
-            });
+        this.walletConnect = document.getElementById('walletConnect');
+        this.walletAddress = document.getElementById('walletAddress');
+                if (!this.startMenu || !this.gameOverScreen || !this.startButton || !this.playAgainButton || !this.finalScore || !this.leaderboardButton || !this.leaderboardPopup || !this.closeLeaderboardButton || !this.startLeaderboard || !this.gameOverLeaderboard || !this.scoreElement || !this.walletConnect || !this.walletAddress) {
+            console.error('One or more UI elements not found');
             return;
         }
         console.log('All UI elements found');
@@ -76,7 +65,7 @@ class Game {
         this.tailAngle = 0;
         this.tailWagSpeed = 0.05;
         this.tailWagAmplitude = 0.3;
-        this.gameStartTime = 0; // Add game start time tracking
+        this.gameStartTime = 0;
 
         // Initialize ball with base size
         this.ball = {
@@ -115,6 +104,7 @@ class Game {
         this.playAgainButton.addEventListener('click', () => this.restartGame());
         this.leaderboardButton.addEventListener('click', () => this.showLeaderboard());
         this.closeLeaderboardButton.addEventListener('click', () => this.hideLeaderboard());
+        this.walletConnect.addEventListener('click', () => this.connectWallet());
         
         // Create power-up timers
         this.caffeineRushTimer = document.createElement('div');
@@ -162,11 +152,520 @@ class Game {
         this.lastOilSpawn = 0;
         this.oilSpawnInterval = 8000; // 8 seconds between oil spawns
         
+        // Initialize wallet state
+        this.walletConnected = false;
+        this.walletAddress = null;
+        
+        // Initialize token state
+        this.tokenState = {
+            contract: null,
+            provider: null,
+            signer: null,
+            decimals: 18,
+            balance: '0',
+            isInitialized: false,
+            error: null
+        };
+        
+        // Token contract integration
+        this.GRIND_TOKEN_ADDRESS = '0x1Eb1aA4079606E1cD70ea6b50D30a10575957aA5';
+        this.BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
+        this.GRIND_TOKEN_ABI = [
+            {
+                "constant": true,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function"
+            },
+            {
+                "constant": false,
+                "inputs": [
+                    {"name": "_to", "type": "address"},
+                    {"name": "_value", "type": "uint256"}
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "type": "function"
+            },
+            {
+                "constant": true,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "", "type": "uint8"}],
+                "type": "function"
+            }
+        ];
+        
+        this.gameCost = 100;
+        
+        // Add reward contract integration
+        this.REWARD_CONTRACT_ADDRESS = '0x...'; // Replace with deployed contract address
+        this.REWARD_CONTRACT_ABI = [
+            {
+                "inputs": [{"name": "score", "type": "uint256"}],
+                "name": "claimReward",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"name": "player", "type": "address"}],
+                "name": "isEligibleForReward",
+                "outputs": [{"name": "", "type": "bool"}],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+        
+        this.rewardContract = null;
+        
+        // Initialize token integration
+        this.initializeTokenIntegration().catch(error => {
+            console.error('Failed to initialize token integration:', error);
+            this.tokenState.error = error.message;
+            this.updateHUD();
+        });
+        
         // Start game loop
         console.log('Starting game loop');
         this.animate();
         
         console.log('Game initialization complete');
+    }
+
+    async connectWallet() {
+        try {
+            if (!window.ethereum) {
+                throw new Error('MetaMask is not installed');
+            }
+
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('Account access granted:', accounts);
+            
+            if (accounts.length === 0) {
+                throw new Error('No accounts found');
+            }
+
+            this.walletAddress = accounts[0];
+            console.log('Wallet address:', this.walletAddress);
+
+            // Update UI
+            if (this.walletAddress) {
+                const walletAddressElement = document.getElementById('walletAddress');
+                if (walletAddressElement) {
+                    walletAddressElement.textContent = `${this.walletAddress.slice(0, 6)}...${this.walletAddress.slice(-4)}`;
+                }
+                const walletConnectElement = document.getElementById('walletConnect');
+                if (walletConnectElement) {
+                    walletConnectElement.textContent = 'Connected';
+                    walletConnectElement.disabled = true;
+                }
+            }
+
+            // Initialize token integration
+            await this.initializeTokenIntegration();
+
+            // Show start button
+            if (this.startButton) {
+                this.startButton.style.display = 'block';
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Failed to connect wallet:', error);
+            return false;
+        }
+    }
+
+    async initializeTokenIntegration() {
+        try {
+            console.log('Starting token integration...');
+            
+            // Verify ethers.js is available
+            if (typeof ethers === 'undefined') {
+                throw new Error('ethers.js not loaded');
+            }
+
+            // Check if MetaMask is installed
+            if (!window.ethereum) {
+                throw new Error('MetaMask not installed');
+            }
+
+            // Request account access
+            console.log('Requesting account access...');
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (accounts.length === 0) {
+                throw new Error('No accounts found');
+            }
+            console.log('Account access granted:', accounts);
+
+            // Set up provider and signer
+            console.log('Setting up provider and signer...');
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            this.walletAddress = await signer.getAddress();
+            console.log('Wallet address:', this.walletAddress);
+
+            // Initialize token contract
+            console.log('Initializing token contract...');
+            const tokenContract = new ethers.Contract(
+                this.GRIND_TOKEN_ADDRESS,
+                this.GRIND_TOKEN_ABI,
+                signer
+            );
+
+            // Get token decimals
+            let decimals = 18;
+            try {
+                decimals = await tokenContract.decimals();
+                console.log('Token decimals:', decimals);
+            } catch (error) {
+                console.warn('Could not fetch token decimals, using default 18');
+            }
+
+            // Check balance
+            console.log('Checking token balance...');
+            const balance = await tokenContract.balanceOf(this.walletAddress);
+            const formattedBalance = ethers.utils.formatUnits(balance, decimals);
+            console.log('Token balance:', formattedBalance);
+
+            // Update token state
+            this.tokenState = {
+                contract: tokenContract,
+                provider: provider,
+                signer: signer,
+                decimals: decimals,
+                balance: formattedBalance,
+                isInitialized: true,
+                error: null
+            };
+
+            // Set up event listeners
+            window.ethereum.on('accountsChanged', async (accounts) => {
+                console.log('Accounts changed:', accounts);
+                if (accounts.length === 0) {
+                    this.walletConnected = false;
+                    this.walletAddress = null;
+                    this.tokenState.balance = '0';
+                    this.walletConnect.textContent = 'Connect Wallet';
+                    this.walletConnect.classList.remove('wallet-connected');
+                    this.walletAddress.textContent = '';
+                    this.startButton.style.display = 'none';
+                } else {
+                    this.walletAddress = accounts[0];
+                    await this.updateTokenBalance();
+                }
+                this.updateHUD();
+            });
+
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+
+            this.walletConnected = true;
+            this.updateHUD();
+            
+            console.log('Token integration initialized successfully');
+
+            // Initialize reward contract
+            this.rewardContract = new ethers.Contract(
+                this.REWARD_CONTRACT_ADDRESS,
+                this.REWARD_CONTRACT_ABI,
+                this.tokenState.signer
+            );
+        } catch (error) {
+            console.error('Failed to initialize token integration:', error);
+            this.walletConnected = false;
+            this.tokenState = {
+                contract: null,
+                provider: null,
+                signer: null,
+                decimals: 18,
+                balance: '0',
+                isInitialized: false,
+                error: error.message
+            };
+            this.updateHUD();
+        }
+    }
+
+    async updateTokenBalance() {
+        try {
+            if (!this.tokenState.contract || !this.walletAddress) {
+                throw new Error('Contract or wallet not initialized');
+            }
+
+            const balance = await this.tokenState.contract.balanceOf(this.walletAddress);
+            this.tokenState.balance = ethers.utils.formatUnits(balance, this.tokenState.decimals);
+            console.log('Updated token balance:', this.tokenState.balance);
+            this.updateHUD();
+        } catch (error) {
+            console.error('Error updating token balance:', error);
+            this.tokenState.error = error.message;
+            this.updateHUD();
+        }
+    }
+
+    updateTokenDisplay() {
+        // Remove existing displays
+        const existingError = document.getElementById('token-error');
+        if (existingError) existingError.remove();
+        
+        const existingBalance = document.getElementById('token-balance');
+        if (existingBalance) existingBalance.remove();
+
+        if (this.tokenState.error) {
+            this.showTokenError();
+            return;
+        }
+
+        // Create balance display
+        const balanceDisplay = document.createElement('div');
+        balanceDisplay.id = 'token-balance';
+        balanceDisplay.style.position = 'fixed';
+        balanceDisplay.style.top = '20px';
+        balanceDisplay.style.right = '20px';
+        balanceDisplay.style.color = '#fff';
+        balanceDisplay.style.fontSize = '18px';
+        balanceDisplay.style.fontFamily = 'Arial, sans-serif';
+        balanceDisplay.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+        balanceDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        balanceDisplay.style.padding = '10px 20px';
+        balanceDisplay.style.borderRadius = '10px';
+        balanceDisplay.style.zIndex = '1000';
+        
+        const formattedBalance = parseFloat(this.tokenState.balance).toFixed(2);
+        balanceDisplay.textContent = `$GRIND Balance: ${formattedBalance}`;
+        
+        document.body.appendChild(balanceDisplay);
+    }
+
+    showTokenError() {
+        const existingError = document.getElementById('token-error');
+        if (existingError) existingError.remove();
+
+        const errorDisplay = document.createElement('div');
+        errorDisplay.id = 'token-error';
+        errorDisplay.style.position = 'fixed';
+        errorDisplay.style.top = '20px';
+        errorDisplay.style.right = '20px';
+        errorDisplay.style.color = '#ff4444';
+        errorDisplay.style.fontSize = '16px';
+        errorDisplay.style.fontFamily = 'Arial, sans-serif';
+        errorDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        errorDisplay.style.padding = '10px 20px';
+        errorDisplay.style.borderRadius = '10px';
+        errorDisplay.style.zIndex = '1000';
+        errorDisplay.textContent = this.tokenState.error;
+        
+        document.body.appendChild(errorDisplay);
+    }
+
+    async startGame() {
+        let loadingMessage = null;
+        try {
+            // Check if token integration is initialized
+            if (!this.tokenState.isInitialized) {
+                console.log('Token integration not initialized, attempting to initialize...');
+                await this.initializeTokenIntegration();
+                
+                // Check if initialization was successful
+                if (!this.tokenState.isInitialized) {
+                    alert('Failed to initialize token integration. Please try again.');
+                    return;
+                }
+            }
+
+            // Check if wallet is connected
+            if (!this.walletConnected) {
+                alert('Please connect your wallet first!');
+                return;
+            }
+
+            // Check token balance
+            const balance = await this.tokenState.contract.balanceOf(this.walletAddress);
+            const formattedBalance = ethers.utils.formatUnits(balance, this.tokenState.decimals);
+            
+            if (parseFloat(formattedBalance) < this.gameCost) {
+                alert(`You need at least ${this.gameCost} $GRIND tokens to play!`);
+                return;
+            }
+
+            // Show loading message
+            loadingMessage = document.createElement('div');
+            loadingMessage.id = 'loading-message';
+            loadingMessage.style.position = 'fixed';
+            loadingMessage.style.top = '50%';
+            loadingMessage.style.left = '50%';
+            loadingMessage.style.transform = 'translate(-50%, -50%)';
+            loadingMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            loadingMessage.style.color = 'white';
+            loadingMessage.style.padding = '20px';
+            loadingMessage.style.borderRadius = '10px';
+            loadingMessage.style.zIndex = '1000';
+            loadingMessage.textContent = 'Burning tokens... Please wait for transaction confirmation.';
+            document.body.appendChild(loadingMessage);
+            
+            // Transfer tokens to burn address
+            const tx = await this.tokenState.contract.transfer(
+                this.BURN_ADDRESS,
+                ethers.utils.parseUnits(this.gameCost.toString(), this.tokenState.decimals)
+            );
+            
+            // Wait for transaction confirmation
+            const receipt = await tx.wait();
+            
+            // Update balance after burn
+            await this.updateTokenBalance();
+            
+            // Show success message with transaction hash
+            alert(`${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash}`);
+            
+            // Hide start menu
+            this.startMenu.style.display = 'none';
+            
+            // Reset game state
+            this.gameState = 'starting';
+            this.score = 0;
+            this.coffeeLevel = 100;
+            this.coffeeBeans = [];
+            this.obstacles = [];
+            this.powerUpActive = false;
+            this.magnetActive = false;
+            this.caffeineRushTimer.style.display = 'none';
+            this.magnetTimer.style.display = 'none';
+            this.gameStartTime = Date.now();
+            
+            // Reset ball position and velocity
+            this.ball.x = this.canvas.width / 2;
+            this.ball.y = this.canvas.height / 2;
+            this.ball.vx = 0;
+            this.ball.vy = 0;
+            this.currentRadius = this.originalRadius;
+            
+            // Reset spawn timing variables
+            this.lastBeanSpawn = Date.now();
+            this.lastObstacleSpawn = Date.now();
+            this.lastCoffeePowerUpSpawn = Date.now();
+            this.lastMagnetPowerUpSpawn = Date.now();
+            
+            // Reset oil spills
+            this.oilSpills = [];
+            this.lastOilSpawn = 0;
+            
+            // Update HUD
+            this.updateHUD();
+            
+            // Start game loop
+            this.lastTime = Date.now();
+            this.animate();
+            
+        } catch (error) {
+            console.error('Error starting game:', error);
+            alert(`Failed to start game: ${error.message}`);
+        } finally {
+            // Always remove loading message
+            if (loadingMessage && document.body.contains(loadingMessage)) {
+                document.body.removeChild(loadingMessage);
+            }
+        }
+    }
+
+    async restartGame() {
+        console.log('Restarting game');
+        let loadingMessage = null;
+        try {
+            // Check token balance
+            const balance = await this.tokenState.contract.balanceOf(this.walletAddress);
+            const formattedBalance = ethers.utils.formatUnits(balance, this.tokenState.decimals);
+            
+            if (parseFloat(formattedBalance) < this.gameCost) {
+                alert(`You need at least ${this.gameCost} $GRIND tokens to play again!`);
+                return;
+            }
+
+            // Show loading message
+            loadingMessage = document.createElement('div');
+            loadingMessage.id = 'loading-message';
+            loadingMessage.style.position = 'fixed';
+            loadingMessage.style.top = '50%';
+            loadingMessage.style.left = '50%';
+            loadingMessage.style.transform = 'translate(-50%, -50%)';
+            loadingMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            loadingMessage.style.color = 'white';
+            loadingMessage.style.padding = '20px';
+            loadingMessage.style.borderRadius = '10px';
+            loadingMessage.style.zIndex = '1000';
+            loadingMessage.textContent = 'Burning tokens... Please wait for transaction confirmation.';
+            document.body.appendChild(loadingMessage);
+            
+            // Transfer tokens to burn address
+            const tx = await this.tokenState.contract.transfer(
+                this.BURN_ADDRESS,
+                ethers.utils.parseUnits(this.gameCost.toString(), this.tokenState.decimals)
+            );
+            
+            // Wait for transaction confirmation
+            const receipt = await tx.wait();
+            
+            // Update balance after burn
+            await this.updateTokenBalance();
+            
+            // Show success message with transaction hash
+            alert(`${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash}`);
+            
+            // Hide game over screen
+            this.gameOverScreen.style.display = 'none';
+            
+            // Reset game state
+            this.gameState = 'starting';
+            this.score = 0;
+            this.coffeeLevel = 100;
+            this.coffeeBeans = [];
+            this.obstacles = [];
+            this.powerUpActive = false;
+            this.magnetActive = false;
+            this.caffeineRushTimer.style.display = 'none';
+            this.magnetTimer.style.display = 'none';
+            this.gameStartTime = Date.now();
+            
+            // Reset ball position and velocity
+            this.ball.x = this.canvas.width / 2;
+            this.ball.y = this.canvas.height / 2;
+            this.ball.vx = 0;
+            this.ball.vy = 0;
+            this.currentRadius = this.originalRadius;
+            
+            // Reset spawn timing variables
+            this.lastBeanSpawn = Date.now();
+            this.lastObstacleSpawn = Date.now();
+            this.lastCoffeePowerUpSpawn = Date.now();
+            this.lastMagnetPowerUpSpawn = Date.now();
+            
+            // Reset oil spills
+            this.oilSpills = [];
+            this.lastOilSpawn = 0;
+            
+            // Update HUD
+            this.updateHUD();
+            
+            // Start game loop if not already running
+            if (!this.animationFrameId) {
+                this.lastTime = Date.now();
+                this.animate();
+            }
+            
+            console.log('Game restarted successfully');
+        } catch (error) {
+            console.error('Error restarting game:', error);
+            alert(`Failed to restart game: ${error.message}`);
+        } finally {
+            // Always remove loading message
+            if (loadingMessage && document.body.contains(loadingMessage)) {
+                document.body.removeChild(loadingMessage);
+            }
+        }
     }
 
     resizeCanvas() {
@@ -234,99 +733,6 @@ class Game {
         };
     }
 
-    startGame() {
-        console.log('Starting game');
-        // Hide menus
-        this.startMenu.style.display = 'none';
-        this.gameOverScreen.style.display = 'none';
-        
-        // Reset game state
-        this.gameState = 'starting'; // Set to starting state
-        this.score = 0;
-        this.coffeeLevel = 100;
-        this.coffeeBeans = [];
-        this.obstacles = [];
-        this.powerUpActive = false;
-        this.magnetActive = false;
-        this.caffeineRushTimer.style.display = 'none';
-        this.magnetTimer.style.display = 'none';
-        this.gameStartTime = Date.now(); // Set game start time
-        
-        // Reset ball position and velocity
-        this.ball.x = this.canvas.width / 2;
-        this.ball.y = this.canvas.height / 2;
-        this.ball.vx = 0;
-        this.ball.vy = 0;
-        this.currentRadius = this.originalRadius;
-        
-        // Reset spawn timing variables
-        this.lastBeanSpawn = Date.now();
-        this.lastObstacleSpawn = Date.now();
-        this.lastCoffeePowerUpSpawn = Date.now();
-        this.lastMagnetPowerUpSpawn = Date.now();
-        
-        // Reset oil spills
-        this.oilSpills = [];
-        this.lastOilSpawn = 0;
-        
-        // Update HUD
-        this.updateHUD();
-        
-        // Start game loop if not already running
-        if (!this.animationFrameId) {
-            this.lastTime = Date.now();
-            this.animate();
-        }
-        
-        console.log('Game started successfully');
-    }
-
-    restartGame() {
-        console.log('Restarting game');
-        // Hide game over screen
-        this.gameOverScreen.style.display = 'none';
-        
-        // Reset game state
-        this.gameState = 'starting'; // Set to starting state
-        this.score = 0;
-        this.coffeeLevel = 100;
-        this.coffeeBeans = [];
-        this.obstacles = [];
-        this.powerUpActive = false;
-        this.magnetActive = false;
-        this.caffeineRushTimer.style.display = 'none';
-        this.magnetTimer.style.display = 'none';
-        this.gameStartTime = Date.now(); // Set game start time
-        
-        // Reset ball position and velocity
-        this.ball.x = this.canvas.width / 2;
-        this.ball.y = this.canvas.height / 2;
-        this.ball.vx = 0;
-        this.ball.vy = 0;
-        this.currentRadius = this.originalRadius;
-        
-        // Reset spawn timing variables
-        this.lastBeanSpawn = Date.now();
-        this.lastObstacleSpawn = Date.now();
-        this.lastCoffeePowerUpSpawn = Date.now();
-        this.lastMagnetPowerUpSpawn = Date.now();
-        
-        // Reset oil spills
-        this.oilSpills = [];
-        this.lastOilSpawn = 0;
-        
-        // Update HUD
-        this.updateHUD();
-        
-        // Start game loop if not already running
-        if (!this.animationFrameId) {
-            this.lastTime = Date.now();
-            this.animate();
-        }
-        
-        console.log('Game restarted successfully');
-    }
-
     gameOver() {
         this.gameState = 'gameOver';
         this.finalScore.textContent = this.score;
@@ -334,20 +740,15 @@ class Game {
     }
 
     updateHUD() {
-        console.log('Updating HUD. Current score:', this.score);
-        // Update coffee level meter
-        const meterFill = document.querySelector('.meter-fill');
-        if (meterFill) {
-            meterFill.style.width = `${this.coffeeLevel}%`;
-        }
-
         // Update score display
-        if (this.scoreElement) {
-            this.scoreElement.textContent = `Score: ${this.score}`;
-            console.log('Score element updated:', this.scoreElement.textContent);
-        } else {
-            console.error('Score element not found in DOM');
-        }
+        this.scoreElement.textContent = `Score: ${this.score}`;
+        
+        // Update coffee meter
+        const meterFill = document.querySelector('.meter-fill');
+        meterFill.style.width = `${this.coffeeLevel}%`;
+        
+        // Update token display
+        this.updateTokenDisplay();
     }
 
     update(deltaTime) {
@@ -923,6 +1324,9 @@ class Game {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
         }
+
+        // Check for reward eligibility
+        this.checkAndClaimReward();
     }
 
     saveHighScore(score) {
@@ -1245,11 +1649,57 @@ class Game {
             }
         }
     }
+
+    async checkAndClaimReward() {
+        try {
+            if (!this.tokenState.contract || !this.walletConnected) {
+                console.log('Token contract not initialized or wallet not connected');
+                return;
+            }
+
+            // Check if player has already claimed reward for this score
+            const claimedRewards = JSON.parse(localStorage.getItem('claimedRewards') || '{}');
+            if (claimedRewards[this.score]) {
+                console.log('Reward already claimed for this score');
+                return;
+            }
+
+            // If score is high enough, claim reward
+            if (this.score >= 2500) {
+                try {
+                    // Transfer tokens directly from the game's token balance
+                    const rewardAmount = ethers.utils.parseUnits('200', this.tokenState.decimals);
+                    const tx = await this.tokenState.contract.transfer(
+                        this.walletAddress,
+                        rewardAmount
+                    );
+                    
+                    await tx.wait();
+                    
+                    // Mark this score as claimed
+                    claimedRewards[this.score] = true;
+                    localStorage.setItem('claimedRewards', JSON.stringify(claimedRewards));
+                    
+                    console.log('Reward claimed successfully!');
+                    alert('Congratulations! You have received 200 $GRIND tokens for your high score!');
+                    
+                    // Update token balance display
+                    await this.updateTokenBalance();
+                } catch (error) {
+                    console.error('Error claiming reward:', error);
+                    alert('Failed to claim reward. Please try again later.');
+                }
+            }
+        } catch (error) {
+            console.error('Error checking reward eligibility:', error);
+        }
+    }
 }
 
 // Initialize game when page loads
 console.log('Setting up window load event');
-window.addEventListener('load', () => {
-    console.log('Window loaded, creating game instance');
-    const game = new Game();
-}); 
+// Remove duplicate initialization since it's handled in init.js
+// window.addEventListener('load', () => {
+//     console.log('Window loaded, creating game instance');
+//     const game = new Game();
+// }); 
