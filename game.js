@@ -1667,24 +1667,55 @@ class Game {
             // If score is high enough, claim reward
             if (this.score >= 2500) {
                 try {
-                    // Transfer tokens directly from the game's token balance
-                    const rewardAmount = ethers.utils.parseUnits('200', this.tokenState.decimals);
-                    const tx = await this.tokenState.contract.transfer(
-                        this.walletAddress,
-                        rewardAmount
-                    );
-                    
-                    await tx.wait();
-                    
+                    // Initialize reward contract if not already done
+                    if (!this.rewardContract) {
+                        this.rewardContract = new ethers.Contract(
+                            this.REWARD_CONTRACT_ADDRESS,
+                            this.REWARD_CONTRACT_ABI,
+                            this.tokenState.signer
+                        );
+                    }
+
+                    // Check if player is eligible for reward
+                    const isEligible = await this.rewardContract.isEligibleForReward(this.walletAddress);
+                    if (!isEligible) {
+                        console.log('Player not eligible for reward');
+                        return;
+                    }
+
+                    // Show loading message
+                    const loadingMessage = document.createElement('div');
+                    loadingMessage.id = 'loading-message';
+                    loadingMessage.style.position = 'fixed';
+                    loadingMessage.style.top = '50%';
+                    loadingMessage.style.left = '50%';
+                    loadingMessage.style.transform = 'translate(-50%, -50%)';
+                    loadingMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                    loadingMessage.style.color = 'white';
+                    loadingMessage.style.padding = '20px';
+                    loadingMessage.style.borderRadius = '10px';
+                    loadingMessage.style.zIndex = '1000';
+                    loadingMessage.textContent = 'Claiming reward... Please wait for transaction confirmation.';
+                    document.body.appendChild(loadingMessage);
+
+                    // Claim reward from reward contract
+                    const tx = await this.rewardContract.claimReward(this.score);
+                    const receipt = await tx.wait();
+
                     // Mark this score as claimed
                     claimedRewards[this.score] = true;
                     localStorage.setItem('claimedRewards', JSON.stringify(claimedRewards));
-                    
-                    console.log('Reward claimed successfully!');
-                    alert('Congratulations! You have received 200 $GRIND tokens for your high score!');
-                    
-                    // Update token balance display
+
+                    // Update token balance
                     await this.updateTokenBalance();
+
+                    // Show success message
+                    alert(`Congratulations! You have received 200 $GRIND tokens for your high score!\nTransaction: ${receipt.transactionHash}`);
+
+                    // Remove loading message
+                    if (document.body.contains(loadingMessage)) {
+                        document.body.removeChild(loadingMessage);
+                    }
                 } catch (error) {
                     console.error('Error claiming reward:', error);
                     alert('Failed to claim reward. Please try again later.');
