@@ -38,6 +38,7 @@ body {
 
 #startMenu {
     z-index: 1001;
+    background-color: #000;
 }
 
 #gameOverScreen {
@@ -113,14 +114,14 @@ body {
 }
 
 .menu-content {
-    background: rgba(0, 0, 0, 0.85);
-    padding: min(40px, 5vh);
-    border-radius: min(20px, 3vh);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
     text-align: center;
-    width: min(600px, 90vw);
-    max-width: 90vw;
+    width: 100%;
+    max-width: 600px;
     margin: 0 auto;
-    box-shadow: 0 0 30px rgba(142, 68, 173, 0.3);
+    position: relative;
 }
 
 .menu-content h1 {
@@ -366,4 +367,90 @@ button:hover {
 
 #closeLeaderboardButton:hover {
     background-color: #34495e;
+}
+
+.start-menu-image {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.full-width-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+#startButton {
+    background-color: #00E5FF;
+    color: #000;
+    border: none;
+    padding: 15px 40px;
+    font-size: 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    margin: 20px auto;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 2px;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+    position: absolute;
+    left: 50%;
+    bottom: 100px;
+    transform: translateX(-50%);
+    width: auto;
+}
+
+#startButton:hover {
+    background-color: #00B8D4;
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.7);
+}
+
+.wallet-connect {
+    position: absolute;
+    left: 50%;
+    bottom: 160px;
+    transform: translateX(-50%);
+    width: auto !important;
+    z-index: 1002;
+}
+
+.wallet-address {
+    position: absolute;
+    left: 50%;
+    bottom: 140px;
+    transform: translateX(-50%);
+    width: auto !important;
+    z-index: 1002;
+}
+
+.stats-icon {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#leaderboardButton {
+    background: none;
+    border: none;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+#leaderboardButton:hover {
+    transform: scale(1.1);
+}
+
+.icon-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 } 

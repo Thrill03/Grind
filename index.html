@@ -38,19 +38,17 @@
         
         <div class="overlay" id="startMenu">
             <div class="menu-content">
-                <div class="start-menu-header">
-                    <div class="mascot-container">
-                        <div class="mascot-hamster"></div>
-                    </div>
-                    <div class="title">
-                        <h1 class="title-top">The</h1>
-                        <h1>$GRIND don't stop</h1>
-                    </div>
+                <div class="start-menu-image">
+                    <img src="start-menu.png" alt="The $GRIND don't stop" class="full-width-image">
                 </div>
                 <div id="walletConnect" class="wallet-connect">Connect Wallet</div>
                 <div id="walletAddress" class="wallet-address"></div>
-                <button id="startButton" style="display: none;">Start Game</button>
-                <button id="leaderboardButton">View High Scores</button>
+                <button id="startButton" style="display: none;">START</button>
+                <div class="stats-icon">
+                    <button id="leaderboardButton">
+                        <img src="stats-icon.png" alt="High Scores" class="icon-image">
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -83,8 +81,9 @@
     </div>
 
     <!-- Load game scripts -->
-    <script src="init.js"></script>
     <script src="physics.js"></script>
+    <script src="config.js"></script>
     <script src="game.js"></script>
+    <script src="init.js"></script>
 </body>
 </html> 

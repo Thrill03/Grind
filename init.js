@@ -1,113 +1,209 @@
 // Debug logging utility
 const debug = {
-    log: (message) => console.log(`[DEBUG] ${message}`),
-    error: (message, error) => console.error(`[ERROR] ${message}`, error)
+    log: (message, data) => {
+        console.log(`[DEBUG] ${message}`, data || '');
+    },
+    error: (message, error) => {
+        console.error(`[ERROR] ${message}`, error || '');
+    }
 };
 
-// Function to load ethers.js if not already loaded
+// Check if wallet is connected
+function checkWalletConnection() {
+    const walletConnect = document.getElementById('walletConnect');
+    const walletAddress = document.getElementById('walletAddress');
+    const startButton = document.getElementById('startButton');
+
+    if (window.ethereum && window.ethereum.selectedAddress) {
+        // Wallet is connected
+        walletConnect.textContent = 'Wallet Connected';
+        walletConnect.classList.add('wallet-connected');
+        walletAddress.textContent = window.ethereum.selectedAddress;
+        startButton.style.display = 'block';
+    } else {
+        // Wallet is not connected
+        walletConnect.textContent = 'Connect Wallet';
+        walletConnect.classList.remove('wallet-connected');
+        walletAddress.textContent = '';
+        startButton.style.display = 'none';
+    }
+}
+
+// Load ethers.js if not already loaded
 async function loadEthers() {
-    if (typeof ethers === 'undefined') {
+    return new Promise((resolve, reject) => {
+        if (typeof ethers !== 'undefined') {
+            debug.log('ethers.js already loaded');
+            resolve();
+            return;
+        }
+
         debug.log('Loading ethers.js...');
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
-            script.onload = () => {
-                debug.log('ethers.js loaded successfully');
-                resolve();
-            };
-            script.onerror = (error) => {
-                debug.error('Failed to load ethers.js:', error);
-                reject(error);
-            };
-            document.head.appendChild(script);
-        });
-    }
-    debug.log('ethers.js already loaded');
-    return Promise.resolve();
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+        script.type = 'text/javascript';
+        script.async = true;
+
+        script.onload = () => {
+            debug.log('ethers.js loaded successfully');
+            resolve();
+        };
+
+        script.onerror = (error) => {
+            debug.error('Failed to load ethers.js', error);
+            reject(new Error('Failed to load ethers.js'));
+        };
+
+        document.head.appendChild(script);
+    });
 }
 
-// Function to check wallet connection
-async function checkWalletConnection() {
+// Initialize reward contract
+async function initializeRewardContract(provider, signer) {
     try {
-        debug.log('Checking wallet connection...');
+        debug.log('Initializing reward contract...');
         
-        if (!window.ethereum) {
-            throw new Error('MetaMask is not installed');
+        // Check if we're on the correct network
+        const network = await provider.getNetwork();
+        if (network.chainId !== CONFIG.NETWORK.chainId) {
+            // Try to switch to the correct network
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: `0x${CONFIG.NETWORK.chainId.toString(16)}`,
+                        chainName: CONFIG.NETWORK.name,
+                        rpcUrls: [CONFIG.NETWORK.rpcUrl],
+                        nativeCurrency: {
+                            name: 'ETH',
+                            symbol: 'ETH',
+                            decimals: 18
+                        }
+                    }]
+                });
+            } catch (switchError) {
+                debug.error('Failed to switch network', switchError);
+                throw new Error(`Please switch to ${CONFIG.NETWORK.name} network`);
+            }
         }
-
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
         
-        if (accounts.length === 0) {
-            throw new Error('No accounts found');
+        const rewardContract = new ethers.Contract(
+            CONFIG.REWARD_CONTRACT_ADDRESS,
+            [
+                {
+                    "inputs": [{"name": "player", "type": "address"}],
+                    "name": "isEligibleForReward",
+                    "outputs": [{"name": "", "type": "bool"}],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [{"name": "score", "type": "uint256"}],
+                    "name": "claimReward",
+                    "outputs": [],
+                    "stateMutability": "nonpayable",
+                    "type": "function"
+                }
+            ],
+            signer
+        );
+        
+        // Test the contract connection
+        try {
+            const testAddress = await signer.getAddress();
+            await rewardContract.isEligibleForReward(testAddress);
+            debug.log('Reward contract initialized successfully');
+            return rewardContract;
+        } catch (testError) {
+            debug.error('Contract test failed', testError);
+            throw new Error('Failed to connect to reward contract. Please ensure you are on the correct network and the contract is deployed.');
         }
-
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        debug.log(`Connected to wallet: ${address}`);
-        
-        return true;
     } catch (error) {
-        debug.error('Wallet connection failed:', error);
-        return false;
-    }
-}
-
-// Initialize game
-async function initializeGame() {
-    try {
-        debug.log('Starting game initialization...');
-        
-        // Load ethers.js first
-        await loadEthers();
-        
-        // Check if MetaMask is installed
-        if (!window.ethereum) {
-            throw new Error('MetaMask is not installed. Please install MetaMask to play the game.');
-        }
-        
-        // Check wallet connection
-        const isConnected = await checkWalletConnection();
-        if (!isConnected) {
-            throw new Error('Failed to connect to wallet. Please make sure MetaMask is unlocked and try again.');
-        }
-        
-        // Check if Game class is available
-        if (typeof Game === 'undefined') {
-            throw new Error('Game class not loaded');
-        }
-        
-        // Create game instance
-        const game = new Game();
-        debug.log('Game instance created successfully');
-        
-        return game;
-    } catch (error) {
-        debug.error('Game initialization failed:', error);
-        // Show error to user
-        const errorMessage = document.createElement('div');
-        errorMessage.style.position = 'fixed';
-        errorMessage.style.top = '10px';
-        errorMessage.style.left = '10px';
-        errorMessage.style.right = '10px';
-        errorMessage.style.backgroundColor = 'rgba(231, 76, 60, 0.9)';
-        errorMessage.style.color = 'white';
-        errorMessage.style.padding = '10px';
-        errorMessage.style.borderRadius = '5px';
-        errorMessage.style.zIndex = '1000';
-        errorMessage.style.textAlign = 'center';
-        errorMessage.textContent = `Error: ${error.message}`;
-        document.body.appendChild(errorMessage);
+        debug.error('Failed to initialize reward contract', error);
         throw error;
     }
 }
 
-// Start initialization when window loads
-window.addEventListener('load', async () => {
-    debug.log('Window loaded, starting initialization...');
+// Wait for all dependencies to load
+async function initializeGame() {
     try {
-        await initializeGame();
+        debug.log('Starting game initialization...');
+
+        // Load ethers.js
+        await loadEthers();
+
+        // Verify ethers.js is loaded
+        if (typeof ethers === 'undefined') {
+            throw new Error('ethers.js not loaded after loading attempt');
+        }
+        debug.log('ethers.js verified');
+
+        // Verify MetaMask is available
+        if (typeof window.ethereum === 'undefined') {
+            throw new Error('MetaMask not available. Please ensure MetaMask is installed and unlocked.');
+        }
+        debug.log('MetaMask available');
+
+        // Verify Game class is loaded
+        if (typeof Game === 'undefined') {
+            throw new Error('Game class not loaded. Please ensure game.js is properly included.');
+        }
+        debug.log('Game class loaded successfully');
+
+        // Create game instance
+        debug.log('Creating game instance...');
+        const game = new Game();
+        debug.log('Game instance created successfully');
+
+        // Initialize wallet connection check
+        debug.log('Initializing wallet connection check...');
+        checkWalletConnection();
+
+        // Add wallet connection event listener
+        const walletConnect = document.getElementById('walletConnect');
+        walletConnect.addEventListener('click', async () => {
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                checkWalletConnection();
+                
+                // Create provider with ENS disabled
+                const provider = new ethers.providers.Web3Provider(window.ethereum, {
+                    name: CONFIG.NETWORK.name,
+                    chainId: CONFIG.NETWORK.chainId,
+                    ensAddress: null // Disable ENS
+                });
+                
+                // Get signer from provider
+                const signer = provider.getSigner();
+                
+                // Initialize reward contract
+                const rewardContract = await initializeRewardContract(provider, signer);
+                game.rewardContract = rewardContract;
+                game.walletConnected = true;
+                
+                debug.log('Wallet connected and reward contract initialized');
+            } catch (error) {
+                debug.error('Failed to connect wallet', error);
+                alert('Failed to connect wallet. Please try again.');
+            }
+        });
+
+        // Add network change listener
+        window.ethereum.on('chainChanged', () => {
+            window.location.reload();
+        });
+
+        // Add account change listener
+        window.ethereum.on('accountsChanged', () => {
+            checkWalletConnection();
+        });
+
+        debug.log('Game initialization complete');
     } catch (error) {
-        debug.error('Initialization failed:', error);
+        debug.error('Game initialization failed', error);
+        alert('Failed to initialize game. Please check the console for details.');
     }
-}); 
+}
+
+// Start initialization when the page loads
+window.addEventListener('load', initializeGame); 

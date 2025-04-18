@@ -3,7 +3,7 @@ class Physics {
         this.gravity = 0.2;
         this.friction = 0.98;
         this.bounce = 0.5;
-        this.maxSpeed = 5;
+        this.maxSpeed = 8;
     }
 
     updateBall(ball) {
@@ -49,7 +49,7 @@ class Physics {
     }
 
     applyForce(ball, forceX, forceY) {
-        ball.vx += forceX * 0.5;
-        ball.vy += forceY * 0.5;
+        ball.vx += forceX * 3;
+        ball.vy += forceY * 3;
     }
 } 

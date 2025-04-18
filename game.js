@@ -39,10 +39,78 @@ class Game {
         this.startLeaderboard = document.getElementById('startLeaderboard');
         this.gameOverLeaderboard = document.getElementById('gameOverLeaderboard');
         this.scoreElement = document.querySelector('.score');
-        this.walletConnect = document.getElementById('walletConnect');
-        this.walletAddress = document.getElementById('walletAddress');
-                if (!this.startMenu || !this.gameOverScreen || !this.startButton || !this.playAgainButton || !this.finalScore || !this.leaderboardButton || !this.leaderboardPopup || !this.closeLeaderboardButton || !this.startLeaderboard || !this.gameOverLeaderboard || !this.scoreElement || !this.walletConnect || !this.walletAddress) {
-            console.error('One or more UI elements not found');
+        
+        // Style the leaderboard button
+        if (this.leaderboardButton) {
+            // Create trophy icon SVG
+            const trophyIcon = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
+                    <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="#ffffff"/>
+                </svg>
+                <span style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px;">High Scores</span>
+            `;
+
+            this.leaderboardButton.innerHTML = trophyIcon;
+            this.leaderboardButton.style.backgroundColor = '#e67e22';
+            this.leaderboardButton.style.border = 'none';
+            this.leaderboardButton.style.padding = '12px 20px';
+            this.leaderboardButton.style.borderRadius = '5px';
+            this.leaderboardButton.style.cursor = 'pointer';
+            this.leaderboardButton.style.transition = 'all 0.3s ease';
+            this.leaderboardButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            this.leaderboardButton.style.display = 'flex';
+            this.leaderboardButton.style.alignItems = 'center';
+            this.leaderboardButton.style.justifyContent = 'center';
+            this.leaderboardButton.style.textDecoration = 'none';
+            this.leaderboardButton.style.fontWeight = 'bold';
+            this.leaderboardButton.style.minWidth = '160px';
+            
+            // Add hover effect
+            this.leaderboardButton.addEventListener('mouseover', () => {
+                this.leaderboardButton.style.backgroundColor = '#d35400';
+                this.leaderboardButton.style.transform = 'translateY(-2px)';
+                this.leaderboardButton.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+            });
+            
+            this.leaderboardButton.addEventListener('mouseout', () => {
+                this.leaderboardButton.style.backgroundColor = '#e67e22';
+                this.leaderboardButton.style.transform = 'translateY(0)';
+                this.leaderboardButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            });
+        }
+        
+        // Create wallet info container for start menu
+        this.startMenuWalletInfo = document.createElement('div');
+        this.startMenuWalletInfo.id = 'start-menu-wallet-info';
+        this.startMenuWalletInfo.style.position = 'absolute';
+        this.startMenuWalletInfo.style.top = '20px';
+        this.startMenuWalletInfo.style.right = '20px';
+        this.startMenuWalletInfo.style.display = 'flex';
+        this.startMenuWalletInfo.style.flexDirection = 'column';
+        this.startMenuWalletInfo.style.gap = '10px';
+        this.startMenuWalletInfo.style.zIndex = '1000';
+        this.startMenu.appendChild(this.startMenuWalletInfo);
+        
+        // Get wallet UI elements
+        this.walletConnectButton = document.getElementById('walletConnect');
+        this.walletAddressDisplay = document.getElementById('walletAddress');
+        
+        if (!this.startMenu || !this.gameOverScreen || !this.startButton || !this.playAgainButton || !this.finalScore || !this.leaderboardButton || !this.leaderboardPopup || !this.closeLeaderboardButton || !this.startLeaderboard || !this.gameOverLeaderboard || !this.scoreElement || !this.walletConnectButton || !this.walletAddressDisplay) {
+            console.error('One or more UI elements not found:', {
+                startMenu: !!this.startMenu,
+                gameOverScreen: !!this.gameOverScreen,
+                startButton: !!this.startButton,
+                playAgainButton: !!this.playAgainButton,
+                finalScore: !!this.finalScore,
+                leaderboardButton: !!this.leaderboardButton,
+                leaderboardPopup: !!this.leaderboardPopup,
+                closeLeaderboardButton: !!this.closeLeaderboardButton,
+                startLeaderboard: !!this.startLeaderboard,
+                gameOverLeaderboard: !!this.gameOverLeaderboard,
+                scoreElement: !!this.scoreElement,
+                walletConnectButton: !!this.walletConnectButton,
+                walletAddressDisplay: !!this.walletAddressDisplay
+            });
             return;
         }
         console.log('All UI elements found');
@@ -104,7 +172,6 @@ class Game {
         this.playAgainButton.addEventListener('click', () => this.restartGame());
         this.leaderboardButton.addEventListener('click', () => this.showLeaderboard());
         this.closeLeaderboardButton.addEventListener('click', () => this.hideLeaderboard());
-        this.walletConnect.addEventListener('click', () => this.connectWallet());
         
         // Create power-up timers
         this.caffeineRushTimer = document.createElement('div');
@@ -220,11 +287,13 @@ class Game {
         
         this.rewardContract = null;
         
-        // Initialize token integration
-        this.initializeTokenIntegration().catch(error => {
+        // Wait for ethers.js to be available before initializing token integration
+        this.waitForEthers().then(() => {
+            // Initialize token integration
+            this.initializeTokenIntegration();
+        }).catch(error => {
             console.error('Failed to initialize token integration:', error);
             this.tokenState.error = error.message;
-            this.updateHUD();
         });
         
         // Start game loop
@@ -234,48 +303,23 @@ class Game {
         console.log('Game initialization complete');
     }
 
-    async connectWallet() {
-        try {
-            if (!window.ethereum) {
-                throw new Error('MetaMask is not installed');
-            }
-
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('Account access granted:', accounts);
+    async waitForEthers() {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds total
             
-            if (accounts.length === 0) {
-                throw new Error('No accounts found');
-            }
-
-            this.walletAddress = accounts[0];
-            console.log('Wallet address:', this.walletAddress);
-
-            // Update UI
-            if (this.walletAddress) {
-                const walletAddressElement = document.getElementById('walletAddress');
-                if (walletAddressElement) {
-                    walletAddressElement.textContent = `${this.walletAddress.slice(0, 6)}...${this.walletAddress.slice(-4)}`;
+            const checkEthers = setInterval(() => {
+                attempts++;
+                if (typeof ethers !== 'undefined') {
+                    clearInterval(checkEthers);
+                    console.log('ethers.js loaded successfully');
+                    resolve();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkEthers);
+                    reject(new Error('ethers.js failed to load after 5 seconds'));
                 }
-                const walletConnectElement = document.getElementById('walletConnect');
-                if (walletConnectElement) {
-                    walletConnectElement.textContent = 'Connected';
-                    walletConnectElement.disabled = true;
-                }
-            }
-
-            // Initialize token integration
-            await this.initializeTokenIntegration();
-
-            // Show start button
-            if (this.startButton) {
-                this.startButton.style.display = 'block';
-            }
-
-            return true;
-        } catch (error) {
-            console.error('Failed to connect wallet:', error);
-            return false;
-        }
+            }, 100);
+        });
     }
 
     async initializeTokenIntegration() {
@@ -284,6 +328,7 @@ class Game {
             
             // Verify ethers.js is available
             if (typeof ethers === 'undefined') {
+                console.error('ethers.js not loaded');
                 throw new Error('ethers.js not loaded');
             }
 
@@ -341,6 +386,15 @@ class Game {
                 error: null
             };
 
+            // Set wallet as connected and show start button
+            this.walletConnected = true;
+            if (this.startButton) {
+                this.startButton.style.display = 'block';
+            }
+
+            // Update the start menu wallet info
+            this.updateStartMenuWalletInfo();
+
             // Set up event listeners
             window.ethereum.on('accountsChanged', async (accounts) => {
                 console.log('Accounts changed:', accounts);
@@ -348,14 +402,17 @@ class Game {
                     this.walletConnected = false;
                     this.walletAddress = null;
                     this.tokenState.balance = '0';
-                    this.walletConnect.textContent = 'Connect Wallet';
-                    this.walletConnect.classList.remove('wallet-connected');
-                    this.walletAddress.textContent = '';
-                    this.startButton.style.display = 'none';
+                    if (this.startButton) {
+                        this.startButton.style.display = 'none';
+                    }
                 } else {
                     this.walletAddress = accounts[0];
                     await this.updateTokenBalance();
+                    if (this.startButton) {
+                        this.startButton.style.display = 'block';
+                    }
                 }
+                this.updateStartMenuWalletInfo();
                 this.updateHUD();
             });
 
@@ -363,9 +420,6 @@ class Game {
                 window.location.reload();
             });
 
-            this.walletConnected = true;
-            this.updateHUD();
-            
             console.log('Token integration initialized successfully');
 
             // Initialize reward contract
@@ -377,6 +431,9 @@ class Game {
         } catch (error) {
             console.error('Failed to initialize token integration:', error);
             this.walletConnected = false;
+            if (this.startButton) {
+                this.startButton.style.display = 'none';
+            }
             this.tokenState = {
                 contract: null,
                 provider: null,
@@ -386,6 +443,7 @@ class Game {
                 isInitialized: false,
                 error: error.message
             };
+            this.updateStartMenuWalletInfo();
             this.updateHUD();
         }
     }
@@ -399,67 +457,85 @@ class Game {
             const balance = await this.tokenState.contract.balanceOf(this.walletAddress);
             this.tokenState.balance = ethers.utils.formatUnits(balance, this.tokenState.decimals);
             console.log('Updated token balance:', this.tokenState.balance);
+            this.updateStartMenuWalletInfo();
             this.updateHUD();
         } catch (error) {
             console.error('Error updating token balance:', error);
             this.tokenState.error = error.message;
+            this.updateStartMenuWalletInfo();
             this.updateHUD();
         }
     }
 
-    updateTokenDisplay() {
-        // Remove existing displays
-        const existingError = document.getElementById('token-error');
-        if (existingError) existingError.remove();
-        
-        const existingBalance = document.getElementById('token-balance');
-        if (existingBalance) existingBalance.remove();
+    // Helper function to abbreviate wallet address
+    abbreviateAddress(address) {
+        if (!address) return '';
+        return `${address.slice(0, 3)}...${address.slice(-4)}`;
+    }
 
-        if (this.tokenState.error) {
-            this.showTokenError();
-            return;
+    updateStartMenuWalletInfo() {
+        // Clear existing content
+        this.startMenuWalletInfo.innerHTML = '';
+
+        // Update wallet connect button visibility
+        if (this.walletConnectButton) {
+            this.walletConnectButton.style.display = this.walletConnected ? 'none' : 'block';
+        }
+
+        // Update start button visibility
+        if (this.startButton) {
+            this.startButton.style.display = this.walletConnected ? 'block' : 'none';
+        }
+
+        // Create wallet status display
+        const walletStatus = document.createElement('div');
+        walletStatus.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        walletStatus.style.padding = '10px 20px';
+        walletStatus.style.borderRadius = '10px';
+        walletStatus.style.textAlign = 'right';
+        walletStatus.style.color = '#fff';
+        walletStatus.style.fontSize = '16px';
+        walletStatus.style.fontFamily = 'Arial, sans-serif';
+        walletStatus.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+
+        if (this.walletConnected && this.walletAddress) {
+            walletStatus.innerHTML = `
+                <div style="color: #4CAF50;">Wallet Connected</div>
+                <div style="font-size: 14px; color: #90CAF9; margin-top: 4px;">${this.abbreviateAddress(this.walletAddress)}</div>
+            `;
+            
+            // Also hide the wallet address display in the center
+            if (this.walletAddressDisplay) {
+                this.walletAddressDisplay.style.display = 'none';
+            }
+        } else {
+            walletStatus.innerHTML = `
+                <div style="color: #FF5252;">Wallet Not Connected</div>
+            `;
+            
+            // Show the wallet connect button and address display
+            if (this.walletAddressDisplay) {
+                this.walletAddressDisplay.style.display = 'block';
+            }
         }
 
         // Create balance display
         const balanceDisplay = document.createElement('div');
-        balanceDisplay.id = 'token-balance';
-        balanceDisplay.style.position = 'fixed';
-        balanceDisplay.style.top = '20px';
-        balanceDisplay.style.right = '20px';
+        balanceDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        balanceDisplay.style.padding = '10px 20px';
+        balanceDisplay.style.borderRadius = '10px';
+        balanceDisplay.style.textAlign = 'right';
         balanceDisplay.style.color = '#fff';
         balanceDisplay.style.fontSize = '18px';
         balanceDisplay.style.fontFamily = 'Arial, sans-serif';
         balanceDisplay.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
-        balanceDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        balanceDisplay.style.padding = '10px 20px';
-        balanceDisplay.style.borderRadius = '10px';
-        balanceDisplay.style.zIndex = '1000';
         
-        const formattedBalance = parseFloat(this.tokenState.balance).toFixed(2);
+        const formattedBalance = this.tokenState.balance ? parseFloat(this.tokenState.balance).toFixed(2) : '0.00';
         balanceDisplay.textContent = `$GRIND Balance: ${formattedBalance}`;
-        
-        document.body.appendChild(balanceDisplay);
-    }
 
-    showTokenError() {
-        const existingError = document.getElementById('token-error');
-        if (existingError) existingError.remove();
-
-        const errorDisplay = document.createElement('div');
-        errorDisplay.id = 'token-error';
-        errorDisplay.style.position = 'fixed';
-        errorDisplay.style.top = '20px';
-        errorDisplay.style.right = '20px';
-        errorDisplay.style.color = '#ff4444';
-        errorDisplay.style.fontSize = '16px';
-        errorDisplay.style.fontFamily = 'Arial, sans-serif';
-        errorDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        errorDisplay.style.padding = '10px 20px';
-        errorDisplay.style.borderRadius = '10px';
-        errorDisplay.style.zIndex = '1000';
-        errorDisplay.textContent = this.tokenState.error;
-        
-        document.body.appendChild(errorDisplay);
+        // Add elements to container
+        this.startMenuWalletInfo.appendChild(walletStatus);
+        this.startMenuWalletInfo.appendChild(balanceDisplay);
     }
 
     async startGame() {
@@ -574,19 +650,37 @@ class Game {
 
     async restartGame() {
         console.log('Restarting game');
-        let loadingMessage = null;
+        
         try {
+            // Check if token integration is initialized
+            if (!this.tokenState.isInitialized) {
+                console.log('Token integration not initialized, attempting to initialize...');
+                await this.initializeTokenIntegration();
+                
+                // Check if initialization was successful
+                if (!this.tokenState.isInitialized) {
+                    alert('Failed to initialize token integration. Please try again.');
+                    return;
+                }
+            }
+
+            // Check if wallet is connected
+            if (!this.walletConnected) {
+                alert('Please connect your wallet first!');
+                return;
+            }
+
             // Check token balance
             const balance = await this.tokenState.contract.balanceOf(this.walletAddress);
             const formattedBalance = ethers.utils.formatUnits(balance, this.tokenState.decimals);
             
             if (parseFloat(formattedBalance) < this.gameCost) {
-                alert(`You need at least ${this.gameCost} $GRIND tokens to play again!`);
+                alert(`You need at least ${this.gameCost} $GRIND tokens to play!`);
                 return;
             }
 
             // Show loading message
-            loadingMessage = document.createElement('div');
+            const loadingMessage = document.createElement('div');
             loadingMessage.id = 'loading-message';
             loadingMessage.style.position = 'fixed';
             loadingMessage.style.top = '50%';
@@ -614,6 +708,11 @@ class Game {
             
             // Show success message with transaction hash
             alert(`${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash}`);
+            
+            // Remove loading message
+            if (document.body.contains(loadingMessage)) {
+                document.body.removeChild(loadingMessage);
+            }
             
             // Hide game over screen
             this.gameOverScreen.style.display = 'none';
@@ -643,9 +742,15 @@ class Game {
             this.lastCoffeePowerUpSpawn = Date.now();
             this.lastMagnetPowerUpSpawn = Date.now();
             
+            // Reset laser beams and pattern state
+            this.laserBeams = [];
+            this.lastLaserSpawn = Date.now();
+            this.laserPatternActive = false;
+            this.laserPatternStartTime = 0;
+            
             // Reset oil spills
             this.oilSpills = [];
-            this.lastOilSpawn = 0;
+            this.lastOilSpawn = Date.now();
             
             // Update HUD
             this.updateHUD();
@@ -657,11 +762,13 @@ class Game {
             }
             
             console.log('Game restarted successfully');
+            
         } catch (error) {
             console.error('Error restarting game:', error);
             alert(`Failed to restart game: ${error.message}`);
-        } finally {
-            // Always remove loading message
+            
+            // Remove loading message in case of error
+            const loadingMessage = document.getElementById('loading-message');
             if (loadingMessage && document.body.contains(loadingMessage)) {
                 document.body.removeChild(loadingMessage);
             }
@@ -748,7 +855,7 @@ class Game {
         meterFill.style.width = `${this.coffeeLevel}%`;
         
         // Update token display
-        this.updateTokenDisplay();
+        this.updateStartMenuWalletInfo();
     }
 
     update(deltaTime) {
@@ -1365,16 +1472,88 @@ class Game {
         const highScores = this.loadHighScores();
         const createLeaderboardHTML = () => {
             return highScores.map((score, index) => `
-                <div class="leaderboard-entry">
-                    <span><span class="rank">#${index + 1}</span> ${score.player} - ${new Date(score.date).toLocaleDateString()}</span>
-                    <span class="score">${score.score}</span>
+                <div class="leaderboard-entry" style="
+                    background: rgba(44, 62, 80, 0.8);
+                    margin: 5px 0;
+                    padding: 10px 15px;
+                    border-radius: 5px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    color: #fff;
+                    font-family: Arial, sans-serif;
+                    transition: background 0.3s;">
+                    <span>
+                        <span class="rank" style="
+                            color: #3498db;
+                            font-weight: bold;
+                            margin-right: 10px;
+                            font-size: 18px;">
+                            #${index + 1}
+                        </span>
+                        <span style="color: #ecf0f1;">${score.player}</span>
+                        <span style="color: #bdc3c7; margin-left: 10px; font-size: 0.9em;">
+                            ${new Date(score.date).toLocaleDateString()}
+                        </span>
+                    </span>
+                    <span class="score" style="
+                        color: #3498db;
+                        font-weight: bold;
+                        font-size: 20px;">
+                        ${score.score}
+                    </span>
                 </div>
             `).join('');
         };
 
+        // Style and update the leaderboard containers
+        const styleLeaderboard = (leaderboardElement) => {
+            if (leaderboardElement) {
+                leaderboardElement.style.backgroundColor = 'rgba(52, 73, 94, 0.95)';
+                leaderboardElement.style.padding = '20px';
+                leaderboardElement.style.borderRadius = '10px';
+                leaderboardElement.style.maxHeight = '300px';
+                leaderboardElement.style.overflowY = 'auto';
+                leaderboardElement.style.width = '100%';
+                leaderboardElement.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                
+                // Style the scrollbar
+                leaderboardElement.style.scrollbarWidth = 'thin';
+                leaderboardElement.style.scrollbarColor = '#3498db #2c3e50';
+                
+                // Webkit scrollbar styles
+                leaderboardElement.style.cssText += `
+                    &::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    &::-webkit-scrollbar-track {
+                        background: #2c3e50;
+                        border-radius: 4px;
+                    }
+                    &::-webkit-scrollbar-thumb {
+                        background: #3498db;
+                        border-radius: 4px;
+                    }
+                    &::-webkit-scrollbar-thumb:hover {
+                        background: #2980b9;
+                    }
+                `;
+            }
+        };
+
         const leaderboardHTML = createLeaderboardHTML();
-        this.startLeaderboard.innerHTML = leaderboardHTML;
-        this.gameOverLeaderboard.innerHTML = leaderboardHTML;
+        
+        // Update start menu leaderboard
+        if (this.startLeaderboard) {
+            this.startLeaderboard.innerHTML = leaderboardHTML;
+            styleLeaderboard(this.startLeaderboard);
+        }
+        
+        // Update game over leaderboard
+        if (this.gameOverLeaderboard) {
+            this.gameOverLeaderboard.innerHTML = leaderboardHTML;
+            styleLeaderboard(this.gameOverLeaderboard);
+        }
     }
 
     showNamePrompt() {
@@ -1389,6 +1568,43 @@ class Game {
     }
 
     showLeaderboard() {
+        // Style the leaderboard popup
+        if (this.leaderboardPopup) {
+            const content = this.leaderboardPopup.querySelector('.menu-content');
+            if (content) {
+                content.style.backgroundColor = 'rgba(52, 73, 94, 0.95)';
+                content.style.padding = '30px';
+                content.style.borderRadius = '15px';
+                content.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                content.style.border = '2px solid #3498db';
+                
+                // Style the title
+                const title = content.querySelector('h2');
+                if (title) {
+                    title.style.color = '#ecf0f1';
+                    title.style.textAlign = 'center';
+                    title.style.marginBottom = '20px';
+                    title.style.fontSize = '24px';
+                    title.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.3)';
+                }
+                
+                // Style the close button
+                const closeButton = content.querySelector('#closeLeaderboardButton');
+                if (closeButton) {
+                    closeButton.style.backgroundColor = '#3498db';
+                    closeButton.style.color = '#fff';
+                    closeButton.style.border = 'none';
+                    closeButton.style.padding = '10px 20px';
+                    closeButton.style.borderRadius = '5px';
+                    closeButton.style.marginTop = '20px';
+                    closeButton.style.cursor = 'pointer';
+                    closeButton.style.transition = 'background 0.3s';
+                    closeButton.style.fontSize = '16px';
+                    closeButton.onmouseover = () => closeButton.style.backgroundColor = '#2980b9';
+                    closeButton.onmouseout = () => closeButton.style.backgroundColor = '#3498db';
+                }
+            }
+        }
         this.leaderboardPopup.style.display = 'flex';
     }
 
@@ -1652,77 +1868,46 @@ class Game {
 
     async checkAndClaimReward() {
         try {
-            if (!this.tokenState.contract || !this.walletConnected) {
-                console.log('Token contract not initialized or wallet not connected');
+            if (!this.walletConnected) {
+                console.log('Wallet not connected');
                 return;
             }
 
-            // Check if player has already claimed reward for this score
-            const claimedRewards = JSON.parse(localStorage.getItem('claimedRewards') || '{}');
-            if (claimedRewards[this.score]) {
-                console.log('Reward already claimed for this score');
-                return;
-            }
+            // Create provider with ENS disabled
+            const provider = new ethers.providers.Web3Provider(window.ethereum, {
+                name: CONFIG.NETWORK.name,
+                chainId: CONFIG.NETWORK.chainId,
+                ensAddress: null // Disable ENS
+            });
+            
+            // Get signer
+            const signer = provider.getSigner();
+            
+            // Create contract instance
+            const rewardContract = new ethers.Contract(
+                CONFIG.REWARD_CONTRACT_ADDRESS,
+                [
+                    {
+                        "inputs": [{"name": "score", "type": "uint256"}],
+                        "name": "claimReward",
+                        "outputs": [],
+                        "stateMutability": "nonpayable",
+                        "type": "function"
+                    }
+                ],
+                signer
+            );
 
             // If score is high enough, claim reward
-            if (this.score >= 2500) {
-                try {
-                    // Initialize reward contract if not already done
-                    if (!this.rewardContract) {
-                        this.rewardContract = new ethers.Contract(
-                            this.REWARD_CONTRACT_ADDRESS,
-                            this.REWARD_CONTRACT_ABI,
-                            this.tokenState.signer
-                        );
-                    }
-
-                    // Check if player is eligible for reward
-                    const isEligible = await this.rewardContract.isEligibleForReward(this.walletAddress);
-                    if (!isEligible) {
-                        console.log('Player not eligible for reward');
-                        return;
-                    }
-
-                    // Show loading message
-                    const loadingMessage = document.createElement('div');
-                    loadingMessage.id = 'loading-message';
-                    loadingMessage.style.position = 'fixed';
-                    loadingMessage.style.top = '50%';
-                    loadingMessage.style.left = '50%';
-                    loadingMessage.style.transform = 'translate(-50%, -50%)';
-                    loadingMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-                    loadingMessage.style.color = 'white';
-                    loadingMessage.style.padding = '20px';
-                    loadingMessage.style.borderRadius = '10px';
-                    loadingMessage.style.zIndex = '1000';
-                    loadingMessage.textContent = 'Claiming reward... Please wait for transaction confirmation.';
-                    document.body.appendChild(loadingMessage);
-
-                    // Claim reward from reward contract
-                    const tx = await this.rewardContract.claimReward(this.score);
-                    const receipt = await tx.wait();
-
-                    // Mark this score as claimed
-                    claimedRewards[this.score] = true;
-                    localStorage.setItem('claimedRewards', JSON.stringify(claimedRewards));
-
-                    // Update token balance
-                    await this.updateTokenBalance();
-
-                    // Show success message
-                    alert(`Congratulations! You have received 200 $GRIND tokens for your high score!\nTransaction: ${receipt.transactionHash}`);
-
-                    // Remove loading message
-                    if (document.body.contains(loadingMessage)) {
-                        document.body.removeChild(loadingMessage);
-                    }
-                } catch (error) {
-                    console.error('Error claiming reward:', error);
-                    alert('Failed to claim reward. Please try again later.');
-                }
+            if (this.score >= CONFIG.GAME.REWARD_THRESHOLD) {
+                const tx = await rewardContract.claimReward(this.score);
+                await tx.wait();
+                console.log('Reward claimed successfully!');
+                alert(`Congratulations! You have received ${CONFIG.GAME.REWARD_AMOUNT} $GRIND tokens for your high score!`);
             }
         } catch (error) {
-            console.error('Error checking reward eligibility:', error);
+            console.error('Error claiming reward:', error);
+            alert('Failed to claim reward. Please check the console for details.');
         }
     }
 }
