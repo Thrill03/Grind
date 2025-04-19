@@ -136,7 +136,7 @@ body {
 .menu-content h2 {
     font-size: min(1.5rem, 5vw);
     margin: 0 0 min(2rem, 4vh) 0;
-    color: #e67e22;
+    color: #3498db;
 }
 
 .controls {
@@ -163,7 +163,7 @@ body {
 }
 
 button {
-    background-color: #e67e22;
+    background-color: #3498db;
     color: white;
     border: none;
     padding: min(1rem, 2vh) min(2rem, 4vw);
@@ -179,7 +179,7 @@ button {
 }
 
 button:hover {
-    background-color: #d35400;
+    background-color: #2980b9;
 }
 
 .hud {
@@ -202,7 +202,7 @@ button:hover {
 
 .meter-fill {
     height: 100%;
-    background-color: #e67e22;
+    background-color: #3498db;
     width: 100%;
     transition: width 0.3s;
 }
@@ -252,7 +252,7 @@ button:hover {
 #restartButton {
     margin-top: 20px;
     padding: 10px 20px;
-    background-color: #e67e22;
+    background-color: #3498db;
     border: none;
     border-radius: 5px;
     color: white;
@@ -261,11 +261,11 @@ button:hover {
 }
 
 #restartButton:hover {
-    background-color: #d35400;
+    background-color: #2980b9;
 }
 
 .leaderboard {
-    background-color: #e67e22;
+    background-color: #3498db;
     color: white;
     border: none;
     padding: 1rem 2rem;
@@ -281,7 +281,7 @@ button:hover {
 }
 
 .leaderboard:hover {
-    background-color: #d35400;
+    background-color: #2980b9;
 }
 
 .leaderboard h2 {
@@ -315,13 +315,13 @@ button:hover {
 }
 
 .leaderboard-list .rank {
-    color: #e67e22;
+    color: #3498db;
     font-weight: bold;
     margin-right: 10px;
 }
 
 .leaderboard-list .score {
-    color: #e67e22;
+    color: #3498db;
     font-weight: bold;
 }
 
@@ -354,7 +354,7 @@ button:hover {
 }
 
 #leaderboardPopup h2 {
-    color: #e67e22;
+    color: #3498db;
     font-size: 2em;
     margin-bottom: 20px;
     text-align: center;

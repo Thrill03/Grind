@@ -40,6 +40,21 @@ class Game {
         this.gameOverLeaderboard = document.getElementById('gameOverLeaderboard');
         this.scoreElement = document.querySelector('.score');
         
+        // Style the leaderboard button
+        if (this.leaderboardButton) {
+            this.leaderboardButton.style.backgroundColor = '#3498db';
+            this.leaderboardButton.style.color = 'white';
+            this.leaderboardButton.style.padding = '15px 30px';
+            this.leaderboardButton.style.border = 'none';
+            this.leaderboardButton.style.borderRadius = '5px';
+            this.leaderboardButton.style.fontSize = '24px';
+            this.leaderboardButton.style.cursor = 'pointer';
+            this.leaderboardButton.style.marginTop = '-80px'; // Changed from -150px to -80px
+            this.leaderboardButton.style.transition = 'background-color 0.3s';
+            this.leaderboardButton.onmouseover = () => this.leaderboardButton.style.backgroundColor = '#2980b9';
+            this.leaderboardButton.onmouseout = () => this.leaderboardButton.style.backgroundColor = '#3498db';
+        }
+        
         // Create wallet info container for start menu
         this.startMenuWalletInfo = document.createElement('div');
         this.startMenuWalletInfo.id = 'start-menu-wallet-info';
@@ -51,6 +66,9 @@ class Game {
         this.startMenuWalletInfo.style.gap = '10px';
         this.startMenuWalletInfo.style.zIndex = '1000';
         this.startMenu.appendChild(this.startMenuWalletInfo);
+        
+        // Show start menu
+        this.showStartMenu();
         
         // Get wallet UI elements
         this.walletConnectButton = document.getElementById('walletConnect');
@@ -557,7 +575,10 @@ class Game {
             await this.updateTokenBalance();
             
             // Show success message with transaction hash
-            alert(`${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash}`);
+            this.showContractPopup(
+                'Tokens Burned',
+                `${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash.slice(0, 6)}...${receipt.transactionHash.slice(-4)}`
+            );
             
             // Hide start menu
             this.startMenu.style.display = 'none';
@@ -668,7 +689,10 @@ class Game {
             await this.updateTokenBalance();
             
             // Show success message with transaction hash
-            alert(`${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash}`);
+            this.showContractPopup(
+                'Tokens Burned',
+                `${this.gameCost} $GRIND tokens burned successfully!\nTransaction: ${receipt.transactionHash.slice(0, 6)}...${receipt.transactionHash.slice(-4)}`
+            );
             
             // Remove loading message
             if (document.body.contains(loadingMessage)) {
@@ -805,29 +829,32 @@ class Game {
         this.gameOver = true;
         this.gameOverScreen.style.display = 'block';
         
-        // Display game over text and score
-        this.gameOverScreen.innerHTML = `
-            <div style="text-align: center; color: white; font-family: 'Arial', sans-serif;">
-                <h1 style="font-size: 48px; margin-bottom: 20px;">Game Over</h1>
-                <p style="font-size: 24px; margin-bottom: 20px;">Your Score: ${this.score}</p>
+        // Update game over text and score
+        const gameOverContent = this.gameOverScreen.querySelector('.menu-content');
+        if (gameOverContent) {
+            gameOverContent.style.color = 'white'; // Set default text color to white
+            gameOverContent.innerHTML = `
+                <h1 style="font-size: 48px; margin-bottom: 20px; color: #3498db;">Game Over</h1>
+                <p style="font-size: 32px; margin-bottom: 20px; color: white;">Your Score: ${this.score}</p>
+                <p style="font-size: 24px; margin-bottom: 20px; color: white;">Final Score: <span id="finalScore" style="color: white; font-weight: bold;">${this.score}</span></p>
                 ${this.score >= 1500 ? `
-                    <div style="background-color: rgba(0, 0, 0, 0.5); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                        <h2 style="color: #4CAF50; margin-bottom: 10px;">Congratulations!</h2>
-                        <p style="font-size: 20px;">You've earned a reward!</p>
+                    <div style="background-color: rgba(52, 73, 94, 0.95); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #3498db;">
+                        <h2 style="color: #3498db; margin-bottom: 10px;">Congratulations!</h2>
+                        <p style="font-size: 20px; color: white;">You've earned a reward!</p>
                         ${this.score >= 5000 ? `
-                            <p style="font-size: 24px; color: #FFD700;">Tier 4: 1,000 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 4: 1,000 $GRIND</p>
                         ` : this.score >= 3500 ? `
-                            <p style="font-size: 24px; color: #FFD700;">Tier 3: 500 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 3: 500 $GRIND</p>
                         ` : this.score >= 2500 ? `
-                            <p style="font-size: 24px; color: #FFD700;">Tier 2: 200 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 2: 200 $GRIND</p>
                         ` : `
-                            <p style="font-size: 24px; color: #FFD700;">Tier 1: 100 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 1: 100 $GRIND</p>
                         `}
                     </div>
                 ` : ''}
                 <div style="margin-top: 20px;">
                     <button id="playAgainBtn" style="
-                        background-color: #4CAF50;
+                        background-color: #3498db;
                         border: none;
                         color: white;
                         padding: 15px 32px;
@@ -841,14 +868,31 @@ class Game {
                         transition: background-color 0.3s;
                     ">Play Again</button>
                 </div>
-            </div>
-        `;
-        
+                <div id="gameOverLeaderboard" style="
+                    background-color: rgba(52, 73, 94, 0.95);
+                    padding: 20px;
+                    border-radius: 10px;
+                    margin-top: 20px;
+                    border: 2px solid #3498db;
+                    max-height: 300px;
+                    overflow-y: auto;
+                    width: 100%;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                ">
+                    <h2 style="color: #3498db; margin-bottom: 15px; text-align: center;">High Scores</h2>
+                    ${this.createLeaderboardHTML()}
+                </div>
+            `;
+        }
+
         // Add event listener for play again button
         document.getElementById('playAgainBtn').addEventListener('click', () => {
             this.gameOverScreen.style.display = 'none';
             this.showStartMenu();
         });
+
+        // Update the leaderboard
+        this.updateLeaderboards();
     }
 
     updateHUD() {
@@ -1458,10 +1502,7 @@ class Game {
         // Sort by score in descending order
         highScores.sort((a, b) => b.score - a.score);
         
-        // Keep only top 5 scores
-        highScores = highScores.slice(0, 5);
-        
-        // Save to localStorage
+        // Save all scores to localStorage
         localStorage.setItem('coffeeRushHighScores', JSON.stringify(highScores));
         
         // Update leaderboards
@@ -1478,7 +1519,7 @@ class Game {
         const createLeaderboardHTML = () => {
             return highScores.map((score, index) => `
                 <div class="leaderboard-entry" style="
-                    background: rgba(44, 62, 80, 0.8);
+                    background: rgba(52, 73, 94, 0.8);
                     margin: 5px 0;
                     padding: 10px 15px;
                     border-radius: 5px;
@@ -1880,6 +1921,27 @@ class Game {
                 return;
             }
 
+            // Determine reward amount based on score
+            let rewardAmount;
+            if (this.score >= 5000) {
+                rewardAmount = 1000;
+            } else if (this.score >= 3500) {
+                rewardAmount = 500;
+            } else if (this.score >= 2500) {
+                rewardAmount = 200;
+            } else if (this.score >= 1500) {
+                rewardAmount = 100;
+            } else {
+                console.log('Score too low for reward');
+                return;
+            }
+
+            // Show reward popup first
+            this.showContractPopup(
+                'Reward Available',
+                `Congratulations! You've earned ${rewardAmount} $GRIND tokens for your high score!\n\nPlease confirm the transaction in MetaMask to claim your reward.`
+            );
+
             // Create provider with ENS disabled
             const provider = new ethers.providers.Web3Provider(window.ethereum, {
                 name: CONFIG.NETWORK.name,
@@ -1905,33 +1967,107 @@ class Game {
                 signer
             );
 
-            // Check if score is eligible for any reward tier
-            if (this.score >= 1500) {
-                console.log('Attempting to claim reward for score:', this.score);
-                const tx = await rewardContract.claimReward(this.score);
-                await tx.wait();
-                
-                // Determine reward amount based on score
-                let rewardAmount;
-                if (this.score >= 5000) {
-                    rewardAmount = 1000;
-                } else if (this.score >= 3500) {
-                    rewardAmount = 500;
-                } else if (this.score >= 2500) {
-                    rewardAmount = 200;
-                } else {
-                    rewardAmount = 100;
-                }
-                
-                console.log('Reward claimed successfully!');
-                alert(`Congratulations! You have received ${rewardAmount} $GRIND tokens for your high score!`);
-            } else {
-                console.log('Score too low for reward');
-            }
+            console.log('Attempting to claim reward for score:', this.score);
+            const tx = await rewardContract.claimReward(this.score);
+            await tx.wait();
+            
+            console.log('Reward claimed successfully!');
+            this.showContractPopup(
+                'Reward Claimed',
+                `Success! ${rewardAmount} $GRIND tokens have been sent to your wallet.`
+            );
         } catch (error) {
             console.error('Error claiming reward:', error);
-            alert('Failed to claim reward. Please check the console for details.');
+            this.showContractPopup(
+                'Claim Failed',
+                'Failed to claim reward. Please try again later.'
+            );
         }
+    }
+
+    showStartMenu() {
+        this.startMenu.style.display = 'block';
+        
+        // Get the existing start button
+        const startButton = document.getElementById('startButton');
+        if (startButton) {
+            // Update the button text to include the cost
+            startButton.innerHTML = 'START<br><span style="font-size: 14px; color: #fff;">Cost: 100 $GRIND</span>';
+            startButton.style.display = 'block';
+            startButton.style.backgroundColor = '#3498db';
+            startButton.style.color = 'white';
+            startButton.style.padding = '15px 30px';
+            startButton.style.border = 'none';
+            startButton.style.borderRadius = '5px';
+            startButton.style.fontSize = '24px';
+            startButton.style.cursor = 'pointer';
+            startButton.style.marginTop = '20px';
+            startButton.style.transition = 'background-color 0.3s';
+            startButton.onmouseover = () => startButton.style.backgroundColor = '#2980b9';
+            startButton.onmouseout = () => startButton.style.backgroundColor = '#3498db';
+        }
+    }
+
+    hideStartMenu() {
+        const startButton = document.getElementById('startButton');
+        if (startButton) {
+            startButton.style.display = 'none';
+        }
+    }
+
+    showContractPopup(title, message, type = 'info') {
+        const popup = document.createElement('div');
+        popup.className = 'overlay';
+        popup.style.zIndex = '1002';
+        popup.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        
+        const content = document.createElement('div');
+        content.className = 'menu-content';
+        content.style.backgroundColor = 'rgba(52, 73, 94, 0.95)';
+        content.style.padding = '30px';
+        content.style.borderRadius = '15px';
+        content.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+        content.style.border = '2px solid #3498db';
+        content.style.maxWidth = '500px';
+        content.style.width = '90%';
+        content.style.textAlign = 'center';
+        
+        const titleElement = document.createElement('h2');
+        titleElement.textContent = title;
+        titleElement.style.color = '#ecf0f1';
+        titleElement.style.textAlign = 'center';
+        titleElement.style.marginBottom = '20px';
+        titleElement.style.fontSize = '24px';
+        titleElement.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.3)';
+        
+        const messageElement = document.createElement('p');
+        messageElement.textContent = message;
+        messageElement.style.color = '#ecf0f1';
+        messageElement.style.fontSize = '18px';
+        messageElement.style.marginBottom = '30px';
+        messageElement.style.lineHeight = '1.5';
+        
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'Close';
+        closeButton.style.backgroundColor = '#3498db';
+        closeButton.style.color = '#fff';
+        closeButton.style.border = 'none';
+        closeButton.style.padding = '10px 20px';
+        closeButton.style.borderRadius = '5px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.transition = 'background 0.3s';
+        closeButton.style.fontSize = '16px';
+        closeButton.onmouseover = () => closeButton.style.backgroundColor = '#2980b9';
+        closeButton.onmouseout = () => closeButton.style.backgroundColor = '#3498db';
+        closeButton.onclick = () => {
+            document.body.removeChild(popup);
+        };
+        
+        content.appendChild(titleElement);
+        content.appendChild(messageElement);
+        content.appendChild(closeButton);
+        popup.appendChild(content);
+        document.body.appendChild(popup);
     }
 }
 

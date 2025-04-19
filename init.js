@@ -155,6 +155,9 @@ async function initializeGame() {
         const game = new Game();
         debug.log('Game instance created successfully');
 
+        // Show start menu
+        game.showStartMenu();
+
         // Initialize wallet connection check
         debug.log('Initializing wallet connection check...');
         checkWalletConnection();
