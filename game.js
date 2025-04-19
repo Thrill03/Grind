@@ -40,45 +40,6 @@ class Game {
         this.gameOverLeaderboard = document.getElementById('gameOverLeaderboard');
         this.scoreElement = document.querySelector('.score');
         
-        // Style the leaderboard button
-        if (this.leaderboardButton) {
-            // Create trophy icon SVG
-            const trophyIcon = `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
-                    <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" fill="#ffffff"/>
-                </svg>
-                <span style="color: #ffffff; font-family: Arial, sans-serif; font-size: 16px;">High Scores</span>
-            `;
-
-            this.leaderboardButton.innerHTML = trophyIcon;
-            this.leaderboardButton.style.backgroundColor = '#e67e22';
-            this.leaderboardButton.style.border = 'none';
-            this.leaderboardButton.style.padding = '12px 20px';
-            this.leaderboardButton.style.borderRadius = '5px';
-            this.leaderboardButton.style.cursor = 'pointer';
-            this.leaderboardButton.style.transition = 'all 0.3s ease';
-            this.leaderboardButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
-            this.leaderboardButton.style.display = 'flex';
-            this.leaderboardButton.style.alignItems = 'center';
-            this.leaderboardButton.style.justifyContent = 'center';
-            this.leaderboardButton.style.textDecoration = 'none';
-            this.leaderboardButton.style.fontWeight = 'bold';
-            this.leaderboardButton.style.minWidth = '160px';
-            
-            // Add hover effect
-            this.leaderboardButton.addEventListener('mouseover', () => {
-                this.leaderboardButton.style.backgroundColor = '#d35400';
-                this.leaderboardButton.style.transform = 'translateY(-2px)';
-                this.leaderboardButton.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
-            });
-            
-            this.leaderboardButton.addEventListener('mouseout', () => {
-                this.leaderboardButton.style.backgroundColor = '#e67e22';
-                this.leaderboardButton.style.transform = 'translateY(0)';
-                this.leaderboardButton.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
-            });
-        }
-        
         // Create wallet info container for start menu
         this.startMenuWalletInfo = document.createElement('div');
         this.startMenuWalletInfo.id = 'start-menu-wallet-info';
@@ -840,10 +801,54 @@ class Game {
         };
     }
 
-    gameOver() {
-        this.gameState = 'gameOver';
-        this.finalScore.textContent = this.score;
-        this.gameOverScreen.style.display = 'flex';
+    showGameOver() {
+        this.gameOver = true;
+        this.gameOverScreen.style.display = 'block';
+        
+        // Display game over text and score
+        this.gameOverScreen.innerHTML = `
+            <div style="text-align: center; color: white; font-family: 'Arial', sans-serif;">
+                <h1 style="font-size: 48px; margin-bottom: 20px;">Game Over</h1>
+                <p style="font-size: 24px; margin-bottom: 20px;">Your Score: ${this.score}</p>
+                ${this.score >= 1500 ? `
+                    <div style="background-color: rgba(0, 0, 0, 0.5); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h2 style="color: #4CAF50; margin-bottom: 10px;">Congratulations!</h2>
+                        <p style="font-size: 20px;">You've earned a reward!</p>
+                        ${this.score >= 5000 ? `
+                            <p style="font-size: 24px; color: #FFD700;">Tier 4: 1,000 $GRIND</p>
+                        ` : this.score >= 3500 ? `
+                            <p style="font-size: 24px; color: #FFD700;">Tier 3: 500 $GRIND</p>
+                        ` : this.score >= 2500 ? `
+                            <p style="font-size: 24px; color: #FFD700;">Tier 2: 200 $GRIND</p>
+                        ` : `
+                            <p style="font-size: 24px; color: #FFD700;">Tier 1: 100 $GRIND</p>
+                        `}
+                    </div>
+                ` : ''}
+                <div style="margin-top: 20px;">
+                    <button id="playAgainBtn" style="
+                        background-color: #4CAF50;
+                        border: none;
+                        color: white;
+                        padding: 15px 32px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 16px;
+                        margin: 4px 2px;
+                        cursor: pointer;
+                        border-radius: 5px;
+                        transition: background-color 0.3s;
+                    ">Play Again</button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listener for play again button
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            this.gameOverScreen.style.display = 'none';
+            this.showStartMenu();
+        });
     }
 
     updateHUD() {
@@ -1482,7 +1487,8 @@ class Game {
                     align-items: center;
                     color: #fff;
                     font-family: Arial, sans-serif;
-                    transition: background 0.3s;">
+                    transition: background 0.3s;
+                    border: 1px solid #3498db;">
                     <span>
                         <span class="rank" style="
                             color: #3498db;
@@ -1516,6 +1522,7 @@ class Game {
                 leaderboardElement.style.overflowY = 'auto';
                 leaderboardElement.style.width = '100%';
                 leaderboardElement.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                leaderboardElement.style.border = '2px solid #3498db';
                 
                 // Style the scrollbar
                 leaderboardElement.style.scrollbarWidth = 'thin';
@@ -1898,12 +1905,28 @@ class Game {
                 signer
             );
 
-            // If score is high enough, claim reward
-            if (this.score >= CONFIG.GAME.REWARD_THRESHOLD) {
+            // Check if score is eligible for any reward tier
+            if (this.score >= 1500) {
+                console.log('Attempting to claim reward for score:', this.score);
                 const tx = await rewardContract.claimReward(this.score);
                 await tx.wait();
+                
+                // Determine reward amount based on score
+                let rewardAmount;
+                if (this.score >= 5000) {
+                    rewardAmount = 1000;
+                } else if (this.score >= 3500) {
+                    rewardAmount = 500;
+                } else if (this.score >= 2500) {
+                    rewardAmount = 200;
+                } else {
+                    rewardAmount = 100;
+                }
+                
                 console.log('Reward claimed successfully!');
-                alert(`Congratulations! You have received ${CONFIG.GAME.REWARD_AMOUNT} $GRIND tokens for your high score!`);
+                alert(`Congratulations! You have received ${rewardAmount} $GRIND tokens for your high score!`);
+            } else {
+                console.log('Score too low for reward');
             }
         } catch (error) {
             console.error('Error claiming reward:', error);
