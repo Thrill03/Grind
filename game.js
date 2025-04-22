@@ -311,14 +311,20 @@ class Game {
                 throw new Error('ethers.js not loaded');
             }
 
-            // Check if MetaMask is installed
-            if (!window.ethereum) {
-                throw new Error('MetaMask not installed');
+            // Check if any wallet provider is installed
+            if (!window.abstract && !window.ethereum) {
+                throw new Error('No wallet provider found. Please install Abstract Global Wallet Connect or MetaMask.');
             }
 
             // Request account access
             console.log('Requesting account access...');
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            let accounts;
+            if (window.abstract) {
+                accounts = await window.abstract.request({ method: 'eth_requestAccounts' });
+            } else {
+                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            }
+            
             if (accounts.length === 0) {
                 throw new Error('No accounts found');
             }
@@ -326,7 +332,14 @@ class Game {
 
             // Set up provider and signer
             console.log('Setting up provider and signer...');
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const provider = new ethers.providers.Web3Provider(
+                window.abstract || window.ethereum,
+                {
+                    name: CONFIG.NETWORK.name,
+                    chainId: CONFIG.NETWORK.chainId,
+                    ensAddress: null // Disable ENS
+                }
+            );
             const signer = provider.getSigner();
             this.walletAddress = await signer.getAddress();
             console.log('Wallet address:', this.walletAddress);
@@ -374,30 +387,30 @@ class Game {
             // Update the start menu wallet info
             this.updateStartMenuWalletInfo();
 
-            // Set up event listeners
-            window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log('Accounts changed:', accounts);
-                if (accounts.length === 0) {
-                    this.walletConnected = false;
-                    this.walletAddress = null;
-                    this.tokenState.balance = '0';
-                    if (this.startButton) {
-                        this.startButton.style.display = 'none';
-                    }
-                } else {
-                    this.walletAddress = accounts[0];
-                    await this.updateTokenBalance();
-                    if (this.startButton) {
-                        this.startButton.style.display = 'block';
-                    }
-                }
-                this.updateStartMenuWalletInfo();
-                this.updateHUD();
-            });
+            // Set up event listeners for both providers
+            if (window.abstract) {
+                window.abstract.on('accountsChanged', async (accounts) => {
+                    console.log('Abstract accounts changed:', accounts);
+                    await this.handleAccountsChanged(accounts);
+                });
+            }
+            if (window.ethereum) {
+                window.ethereum.on('accountsChanged', async (accounts) => {
+                    console.log('MetaMask accounts changed:', accounts);
+                    await this.handleAccountsChanged(accounts);
+                });
+            }
 
-            window.ethereum.on('chainChanged', () => {
-                window.location.reload();
-            });
+            if (window.abstract) {
+                window.abstract.on('chainChanged', () => {
+                    window.location.reload();
+                });
+            }
+            if (window.ethereum) {
+                window.ethereum.on('chainChanged', () => {
+                    window.location.reload();
+                });
+            }
 
             console.log('Token integration initialized successfully');
 
@@ -425,6 +438,26 @@ class Game {
             this.updateStartMenuWalletInfo();
             this.updateHUD();
         }
+    }
+
+    // Helper method to handle account changes
+    async handleAccountsChanged(accounts) {
+        if (accounts.length === 0) {
+            this.walletConnected = false;
+            this.walletAddress = null;
+            this.tokenState.balance = '0';
+            if (this.startButton) {
+                this.startButton.style.display = 'none';
+            }
+        } else {
+            this.walletAddress = accounts[0];
+            await this.updateTokenBalance();
+            if (this.startButton) {
+                this.startButton.style.display = 'block';
+            }
+        }
+        this.updateStartMenuWalletInfo();
+        this.updateHUD();
     }
 
     async updateTokenBalance() {
@@ -765,20 +798,23 @@ class Game {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         
-        // Calculate base size for scaling
-        const baseSize = Math.min(600, this.canvas.width);
+        // Calculate base size using the smaller dimension to maintain consistent gameplay
+        const baseSize = Math.min(this.canvas.width, this.canvas.height);
+        
+        // Update physics with new base size
+        this.physics.setBaseSize(baseSize);
         
         // Update ball properties with proper scaling
-        this.ball.groundY = this.canvas.height - 50;
+        this.ball.groundY = this.canvas.height - (baseSize * 0.05); // 5% from bottom
         this.ball.maxX = this.canvas.width;
         
-        // Set ball radius proportional to screen size (50% larger)
-        this.originalRadius = Math.min(45, Math.max(30, baseSize * 0.045)); // Increased by 50%
+        // Set ball radius proportional to base size (increased from 3% to 4%)
+        this.originalRadius = baseSize * 0.04; // 4% of base size
         this.currentRadius = this.originalRadius;
         this.ball.radius = this.currentRadius;
         
-        // Set magnet radius proportional to screen size (scaled with player size)
-        this.magnetRadius = Math.min(225, Math.max(150, baseSize * 0.3)); // Increased by 50%
+        // Set magnet radius proportional to base size (increased from 15% to 20%)
+        this.magnetRadius = baseSize * 0.2; // 20% of base size
         
         // Center ball
         this.ball.x = this.canvas.width / 2;
@@ -1663,15 +1699,14 @@ class Game {
     generateCoffeeBeans() {
         const now = Date.now();
         if (now - this.lastBeanSpawn > this.beanSpawnInterval) {
-            // Use a smaller base size for larger screens
-            const baseSize = Math.min(600, this.canvas.width);
-            const beanSize = Math.min(70, Math.max(50, baseSize * 0.04)); // Restored to original size
+            const baseSize = Math.min(this.canvas.width, this.canvas.height);
+            const beanSize = baseSize * 0.03; // Increased from 2% to 3% of base size
             const bean = {
                 x: Math.random() * (this.canvas.width - beanSize),
                 y: -beanSize,
                 width: beanSize,
                 height: beanSize,
-                speed: Math.min(4, Math.max(2, baseSize * 0.003)),
+                speed: baseSize * 0.003,
                 isPowerUp: false,
                 isMagnet: false,
                 radius: beanSize / 2
@@ -1684,15 +1719,14 @@ class Game {
     generateObstacles() {
         const now = Date.now();
         if (now - this.lastObstacleSpawn > this.obstacleSpawnInterval) {
-            // Use a smaller base size for larger screens
-            const baseSize = Math.min(600, this.canvas.width);
-            const obstacleSize = Math.min(45, Math.max(35, baseSize * 0.03));
+            const baseSize = Math.min(this.canvas.width, this.canvas.height);
+            const obstacleSize = baseSize * 0.015; // 1.5% of base size
             const obstacle = {
                 x: Math.random() * (this.canvas.width - obstacleSize),
                 y: -obstacleSize,
                 width: obstacleSize,
                 height: obstacleSize,
-                speed: Math.min(5, Math.max(3, baseSize * 0.004)),
+                speed: baseSize * 0.004, // Scaled with base size
                 radius: obstacleSize / 2
             };
             this.obstacles.push(obstacle);
@@ -1702,18 +1736,18 @@ class Game {
 
     generatePowerUps() {
         const now = Date.now();
+        const baseSize = Math.min(this.canvas.width, this.canvas.height);
         
         // Generate coffee power-up independently
         if (now - this.lastCoffeePowerUpSpawn > this.powerUpSpawnInterval) {
-            const baseSize = Math.min(600, this.canvas.width);
-            const powerUpSize = Math.min(80, Math.max(60, baseSize * 0.05)); // Doubled from 40/30 to 80/60
+            const powerUpSize = baseSize * 0.025; // 2.5% of base size
             
             const coffeePowerUp = {
                 x: Math.random() * (this.canvas.width - powerUpSize),
                 y: -powerUpSize,
                 width: powerUpSize,
                 height: powerUpSize,
-                speed: Math.min(3, Math.max(2, baseSize * 0.002)),
+                speed: baseSize * 0.002, // Scaled with base size
                 type: 'coffee',
                 radius: powerUpSize / 2,
                 isPowerUp: true,
@@ -1726,15 +1760,14 @@ class Game {
         
         // Generate magnet power-up independently
         if (now - this.lastMagnetPowerUpSpawn > this.powerUpSpawnInterval) {
-            const baseSize = Math.min(600, this.canvas.width);
-            const powerUpSize = Math.min(80, Math.max(60, baseSize * 0.05)); // Doubled from 40/30 to 80/60
+            const powerUpSize = baseSize * 0.025; // 2.5% of base size
             
             const magnetPowerUp = {
                 x: Math.random() * (this.canvas.width - powerUpSize),
                 y: -powerUpSize,
                 width: powerUpSize,
                 height: powerUpSize,
-                speed: Math.min(3, Math.max(2, baseSize * 0.002)),
+                speed: baseSize * 0.002, // Scaled with base size
                 type: 'magnet',
                 radius: powerUpSize / 2,
                 isPowerUp: true,
@@ -2006,13 +2039,93 @@ class Game {
             startButton.onmouseover = () => startButton.style.backgroundColor = '#2980b9';
             startButton.onmouseout = () => startButton.style.backgroundColor = '#3498db';
         }
+
+        // Create settings button
+        const settingsButton = document.createElement('button');
+        settingsButton.id = 'settingsButton';
+        settingsButton.innerHTML = '⚙️';
+        settingsButton.style.position = 'absolute';
+        settingsButton.style.left = '20px';
+        settingsButton.style.top = '20px';
+        settingsButton.style.backgroundColor = 'transparent';
+        settingsButton.style.border = 'none';
+        settingsButton.style.cursor = 'pointer';
+        settingsButton.style.padding = '10px';
+        settingsButton.style.fontSize = '24px';
+        settingsButton.style.borderRadius = '50%';
+        settingsButton.style.transition = 'background-color 0.3s';
+        settingsButton.onmouseover = () => settingsButton.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        settingsButton.onmouseout = () => settingsButton.style.backgroundColor = 'transparent';
+        settingsButton.onclick = () => this.showSettings();
+        this.startMenu.appendChild(settingsButton);
+
+        // Restore leaderboard button position
+        if (this.leaderboardButton) {
+            this.leaderboardButton.style.marginTop = '-80px';
+            this.leaderboardButton.style.display = 'block';
+        }
     }
 
-    hideStartMenu() {
-        const startButton = document.getElementById('startButton');
-        if (startButton) {
-            startButton.style.display = 'none';
-        }
+    showSettings() {
+        const settingsPopup = document.createElement('div');
+        settingsPopup.className = 'overlay';
+        settingsPopup.style.zIndex = '1002';
+        settingsPopup.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        
+        const content = document.createElement('div');
+        content.className = 'menu-content';
+        content.style.backgroundColor = 'rgba(52, 73, 94, 0.95)';
+        content.style.padding = '30px';
+        content.style.borderRadius = '15px';
+        content.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+        content.style.border = '2px solid #3498db';
+        content.style.maxWidth = '500px';
+        content.style.width = '90%';
+        content.style.textAlign = 'center';
+        
+        const title = document.createElement('h2');
+        title.textContent = 'Game Instructions';
+        title.style.color = '#3498db';
+        title.style.marginBottom = '20px';
+        
+        const description = document.createElement('div');
+        description.style.color = 'white';
+        description.style.textAlign = 'left';
+        description.style.lineHeight = '1.6';
+        description.innerHTML = `
+            <p style="margin-bottom: 15px;">Welcome to $GRIND! Your hamster needs $GRIND tokens to survive.</p>
+            <p style="margin-bottom: 15px;">Game Rules:</p>
+            <ul style="margin-bottom: 15px; padding-left: 20px;">
+                <li>Collect $GRIND tokens to keep your hamster alive</li>
+                <li>Avoid obstacles and hazards</li>
+                <li>Your hamster's energy depletes over time</li>
+                <li>Collecting tokens restores energy</li>
+                <li>Game over when energy reaches zero</li>
+            </ul>
+            <p style="margin-bottom: 15px;">Controls:</p>
+            <ul style="margin-bottom: 15px; padding-left: 20px;">
+                <li>WASD or Arrow Keys to move</li>
+                <li>Collect tokens to survive</li>
+                <li>Watch out for obstacles!</li>
+            </ul>
+        `;
+        
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'Close';
+        closeButton.style.backgroundColor = '#3498db';
+        closeButton.style.color = 'white';
+        closeButton.style.border = 'none';
+        closeButton.style.padding = '10px 20px';
+        closeButton.style.borderRadius = '5px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.marginTop = '20px';
+        closeButton.onclick = () => document.body.removeChild(settingsPopup);
+        
+        content.appendChild(title);
+        content.appendChild(description);
+        content.appendChild(closeButton);
+        settingsPopup.appendChild(content);
+        document.body.appendChild(settingsPopup);
     }
 
     showContractPopup(title, message, type = 'info') {

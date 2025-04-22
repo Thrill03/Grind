@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The $GRIND don't stop</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Add Abstract Global Wallet Connect script -->
+    <script src="https://cdn.abstract.money/abstract-wallet-connect.js"></script>
     <style>
         .wallet-connect {
             margin: 20px 0;
@@ -30,6 +32,15 @@
         .wallet-connected:hover {
             background: #2ecc71;
         }
+        .wallet-provider {
+            position: absolute;
+            left: 50%;
+            bottom: 200px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #95a5a6;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -41,6 +52,7 @@
                 <div class="start-menu-image">
                     <img src="start-menu.png" alt="The $GRIND don't stop" class="full-width-image">
                 </div>
+                <div id="walletProvider" class="wallet-provider"></div>
                 <div id="walletConnect" class="wallet-connect">Connect Wallet</div>
                 <div id="walletAddress" class="wallet-address"></div>
                 <button id="startButton" style="display: none;">START</button>

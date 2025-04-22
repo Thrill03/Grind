@@ -14,14 +14,21 @@ function checkWalletConnection() {
     const walletAddress = document.getElementById('walletAddress');
     const startButton = document.getElementById('startButton');
 
-    if (window.ethereum && window.ethereum.selectedAddress) {
-        // Wallet is connected
+    // Check for Abstract Global Wallet Connect first
+    if (window.abstract && window.abstract.selectedAddress) {
+        // Abstract wallet is connected
+        walletConnect.textContent = 'Wallet Connected';
+        walletConnect.classList.add('wallet-connected');
+        walletAddress.textContent = window.abstract.selectedAddress;
+        startButton.style.display = 'block';
+    } else if (window.ethereum && window.ethereum.selectedAddress) {
+        // MetaMask wallet is connected
         walletConnect.textContent = 'Wallet Connected';
         walletConnect.classList.add('wallet-connected');
         walletAddress.textContent = window.ethereum.selectedAddress;
         startButton.style.display = 'block';
     } else {
-        // Wallet is not connected
+        // No wallet is connected
         walletConnect.textContent = 'Connect Wallet';
         walletConnect.classList.remove('wallet-connected');
         walletAddress.textContent = '';
@@ -166,15 +173,26 @@ async function initializeGame() {
         const walletConnect = document.getElementById('walletConnect');
         walletConnect.addEventListener('click', async () => {
             try {
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                // Try Abstract Global Wallet Connect first
+                if (window.abstract) {
+                    await window.abstract.request({ method: 'eth_requestAccounts' });
+                } else if (window.ethereum) {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                } else {
+                    throw new Error('No wallet provider found. Please install Abstract Global Wallet Connect or MetaMask.');
+                }
+                
                 checkWalletConnection();
                 
                 // Create provider with ENS disabled
-                const provider = new ethers.providers.Web3Provider(window.ethereum, {
-                    name: CONFIG.NETWORK.name,
-                    chainId: CONFIG.NETWORK.chainId,
-                    ensAddress: null // Disable ENS
-                });
+                const provider = new ethers.providers.Web3Provider(
+                    window.abstract || window.ethereum,
+                    {
+                        name: CONFIG.NETWORK.name,
+                        chainId: CONFIG.NETWORK.chainId,
+                        ensAddress: null // Disable ENS
+                    }
+                );
                 
                 // Get signer from provider
                 const signer = provider.getSigner();
@@ -191,15 +209,29 @@ async function initializeGame() {
             }
         });
 
-        // Add network change listener
-        window.ethereum.on('chainChanged', () => {
-            window.location.reload();
-        });
+        // Add network change listener for both providers
+        if (window.abstract) {
+            window.abstract.on('chainChanged', () => {
+                window.location.reload();
+            });
+        }
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+        }
 
-        // Add account change listener
-        window.ethereum.on('accountsChanged', () => {
-            checkWalletConnection();
-        });
+        // Add account change listener for both providers
+        if (window.abstract) {
+            window.abstract.on('accountsChanged', () => {
+                checkWalletConnection();
+            });
+        }
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', () => {
+                checkWalletConnection();
+            });
+        }
 
         debug.log('Game initialization complete');
     } catch (error) {

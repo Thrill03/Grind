@@ -4,6 +4,14 @@ class Physics {
         this.friction = 0.98;
         this.bounce = 0.5;
         this.maxSpeed = 8;
+        this.baseSize = 0;
+    }
+
+    setBaseSize(baseSize) {
+        this.baseSize = baseSize;
+        // Scale physics parameters based on base size
+        this.gravity = 0.2 * (baseSize / 600); // Scale gravity with base size
+        this.maxSpeed = 8 * (baseSize / 600); // Scale max speed with base size
     }
 
     updateBall(ball) {
@@ -49,7 +57,9 @@ class Physics {
     }
 
     applyForce(ball, forceX, forceY) {
-        ball.vx += forceX * 3;
-        ball.vy += forceY * 3;
+        // Scale force application with base size
+        const forceMultiplier = this.baseSize / 600;
+        ball.vx += forceX * 3 * forceMultiplier;
+        ball.vy += forceY * 3 * forceMultiplier;
     }
 } 
