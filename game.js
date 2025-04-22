@@ -1700,7 +1700,7 @@ class Game {
         const now = Date.now();
         if (now - this.lastBeanSpawn > this.beanSpawnInterval) {
             const baseSize = Math.min(this.canvas.width, this.canvas.height);
-            const beanSize = baseSize * 0.03; // Increased from 2% to 3% of base size
+            const beanSize = baseSize * 0.045; // Reduced from 9% to 4.5% of base size (half size)
             const bean = {
                 x: Math.random() * (this.canvas.width - beanSize),
                 y: -beanSize,
@@ -1720,13 +1720,13 @@ class Game {
         const now = Date.now();
         if (now - this.lastObstacleSpawn > this.obstacleSpawnInterval) {
             const baseSize = Math.min(this.canvas.width, this.canvas.height);
-            const obstacleSize = baseSize * 0.015; // 1.5% of base size
+            const obstacleSize = baseSize * 0.0375; // Increased from 2.5% to 3.75% of base size (1.5x larger)
             const obstacle = {
                 x: Math.random() * (this.canvas.width - obstacleSize),
                 y: -obstacleSize,
                 width: obstacleSize,
                 height: obstacleSize,
-                speed: baseSize * 0.004, // Scaled with base size
+                speed: baseSize * 0.004,
                 radius: obstacleSize / 2
             };
             this.obstacles.push(obstacle);
@@ -1740,14 +1740,14 @@ class Game {
         
         // Generate coffee power-up independently
         if (now - this.lastCoffeePowerUpSpawn > this.powerUpSpawnInterval) {
-            const powerUpSize = baseSize * 0.025; // 2.5% of base size
+            const powerUpSize = baseSize * 0.06; // Reduced from 12% to 6% of base size (half size)
             
             const coffeePowerUp = {
                 x: Math.random() * (this.canvas.width - powerUpSize),
                 y: -powerUpSize,
                 width: powerUpSize,
                 height: powerUpSize,
-                speed: baseSize * 0.002, // Scaled with base size
+                speed: baseSize * 0.002,
                 type: 'coffee',
                 radius: powerUpSize / 2,
                 isPowerUp: true,
@@ -1760,14 +1760,14 @@ class Game {
         
         // Generate magnet power-up independently
         if (now - this.lastMagnetPowerUpSpawn > this.powerUpSpawnInterval) {
-            const powerUpSize = baseSize * 0.025; // 2.5% of base size
+            const powerUpSize = baseSize * 0.06; // Reduced from 12% to 6% of base size (half size)
             
             const magnetPowerUp = {
                 x: Math.random() * (this.canvas.width - powerUpSize),
                 y: -powerUpSize,
                 width: powerUpSize,
                 height: powerUpSize,
-                speed: baseSize * 0.002, // Scaled with base size
+                speed: baseSize * 0.002,
                 type: 'magnet',
                 radius: powerUpSize / 2,
                 isPowerUp: true,
