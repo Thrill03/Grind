@@ -175,7 +175,7 @@ class Game {
         this.updateLeaderboards();
         
         // Set constant spawn intervals
-        this.beanSpawnInterval = 600; // 0.6 seconds for coins (20% slower)
+        this.beanSpawnInterval = 480; // 0.48 seconds for coins (20% faster spawn rate)
         this.obstacleSpawnInterval = 5000; // 5 seconds for coffee beans
         this.powerUpSpawnInterval = 6900; // 6.9 seconds for power-ups (15% slower)
         
