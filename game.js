@@ -175,9 +175,9 @@ class Game {
         this.updateLeaderboards();
         
         // Set constant spawn intervals
-        this.beanSpawnInterval = 480; // 0.48 seconds for coins (20% faster spawn rate)
-        this.obstacleSpawnInterval = 5000; // 5 seconds for coffee beans
-        this.powerUpSpawnInterval = 6900; // 6.9 seconds for power-ups (15% slower)
+        this.beanSpawnInterval = 384; // 0.384 seconds for coins (20% faster than before)
+        this.obstacleSpawnInterval = 4000; // 4 seconds for coffee beans (20% faster than before)
+        this.powerUpSpawnInterval = 5520; // 5.52 seconds for power-ups (20% faster than before)
         
         // Initialize spawn timing variables
         this.lastBeanSpawn = 0;
@@ -216,6 +216,7 @@ class Game {
         // Token contract integration
         this.GRIND_TOKEN_ADDRESS = '0x1Eb1aA4079606E1cD70ea6b50D30a10575957aA5';
         this.BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
+        this.REWARD_CONTRACT_ADDRESS = '0x0C5142c39E21E8463F635E99412Eb6a0f3a6dEAE';
         this.GRIND_TOKEN_ABI = [
             {
                 "constant": true,
@@ -246,7 +247,6 @@ class Game {
         this.gameCost = 100;
         
         // Add reward contract integration
-        this.REWARD_CONTRACT_ADDRESS = '0x...'; // Replace with deployed contract address
         this.REWARD_CONTRACT_ABI = [
             {
                 "inputs": [{"name": "score", "type": "uint256"}],
@@ -798,23 +798,23 @@ class Game {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         
-        // Calculate base size using the smaller dimension to maintain consistent gameplay
-        const baseSize = Math.min(this.canvas.width, this.canvas.height);
+        // Use fixed base size of 600px for consistent gameplay
+        const baseSize = 600;
         
-        // Update physics with new base size
+        // Update physics with fixed base size
         this.physics.setBaseSize(baseSize);
         
-        // Update ball properties with proper scaling
-        this.ball.groundY = this.canvas.height - (baseSize * 0.05); // 5% from bottom
+        // Update ball properties with fixed values
+        this.ball.groundY = this.canvas.height - 30; // Fixed 30px from bottom
         this.ball.maxX = this.canvas.width;
         
-        // Set ball radius proportional to base size (increased from 3% to 4%)
-        this.originalRadius = baseSize * 0.04; // 4% of base size
+        // Set fixed ball radius
+        this.originalRadius = 24; // Fixed 24px radius
         this.currentRadius = this.originalRadius;
         this.ball.radius = this.currentRadius;
         
-        // Set magnet radius proportional to base size (increased from 15% to 20%)
-        this.magnetRadius = baseSize * 0.2; // 20% of base size
+        // Set fixed magnet radius
+        this.magnetRadius = 120; // Fixed 120px radius
         
         // Center ball
         this.ball.x = this.canvas.width / 2;
@@ -878,13 +878,19 @@ class Game {
                         <h2 style="color: #3498db; margin-bottom: 10px;">Congratulations!</h2>
                         <p style="font-size: 20px; color: white;">You've earned a reward!</p>
                         ${this.score >= 5000 ? `
-                            <p style="font-size: 24px; color: #3498db;">Tier 4: 1,000 $GRIND</p>
-                        ` : this.score >= 3500 ? `
-                            <p style="font-size: 24px; color: #3498db;">Tier 3: 500 $GRIND</p>
-                        ` : this.score >= 2500 ? `
-                            <p style="font-size: 24px; color: #3498db;">Tier 2: 200 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 7: 1,000 $GRIND</p>
+                        ` : this.score >= 3000 ? `
+                            <p style="font-size: 24px; color: #3498db;">Tier 6: 300 $GRIND</p>
+                        ` : this.score >= 2000 ? `
+                            <p style="font-size: 24px; color: #3498db;">Tier 5: 150 $GRIND</p>
+                        ` : this.score >= 1500 ? `
+                            <p style="font-size: 24px; color: #3498db;">Tier 4: 100 $GRIND</p>
+                        ` : this.score >= 1000 ? `
+                            <p style="font-size: 24px; color: #3498db;">Tier 3: 50 $GRIND</p>
+                        ` : this.score >= 300 ? `
+                            <p style="font-size: 24px; color: #3498db;">Tier 2: 20 $GRIND</p>
                         ` : `
-                            <p style="font-size: 24px; color: #3498db;">Tier 1: 100 $GRIND</p>
+                            <p style="font-size: 24px; color: #3498db;">Tier 1: 5 $GRIND</p>
                         `}
                     </div>
                 ` : ''}
@@ -1699,17 +1705,15 @@ class Game {
     generateCoffeeBeans() {
         const now = Date.now();
         if (now - this.lastBeanSpawn > this.beanSpawnInterval) {
-            const baseSize = Math.min(this.canvas.width, this.canvas.height);
-            const beanSize = baseSize * 0.045; // Reduced from 9% to 4.5% of base size (half size)
             const bean = {
-                x: Math.random() * (this.canvas.width - beanSize),
-                y: -beanSize,
-                width: beanSize,
-                height: beanSize,
-                speed: baseSize * 0.003,
+                x: Math.random() * (this.canvas.width - 27),
+                y: -27,
+                width: 27,
+                height: 27,
+                speed: 1.8, // Fixed speed
                 isPowerUp: false,
                 isMagnet: false,
-                radius: beanSize / 2
+                radius: 13.5
             };
             this.coffeeBeans.push(bean);
             this.lastBeanSpawn = now;
@@ -1719,15 +1723,13 @@ class Game {
     generateObstacles() {
         const now = Date.now();
         if (now - this.lastObstacleSpawn > this.obstacleSpawnInterval) {
-            const baseSize = Math.min(this.canvas.width, this.canvas.height);
-            const obstacleSize = baseSize * 0.0375; // Increased from 2.5% to 3.75% of base size (1.5x larger)
             const obstacle = {
-                x: Math.random() * (this.canvas.width - obstacleSize),
-                y: -obstacleSize,
-                width: obstacleSize,
-                height: obstacleSize,
-                speed: baseSize * 0.004,
-                radius: obstacleSize / 2
+                x: Math.random() * (this.canvas.width - 22.5),
+                y: -22.5,
+                width: 22.5,
+                height: 22.5,
+                speed: 2.4, // Fixed speed
+                radius: 11.25
             };
             this.obstacles.push(obstacle);
             this.lastObstacleSpawn = now;
@@ -1736,20 +1738,17 @@ class Game {
 
     generatePowerUps() {
         const now = Date.now();
-        const baseSize = Math.min(this.canvas.width, this.canvas.height);
         
         // Generate coffee power-up independently
         if (now - this.lastCoffeePowerUpSpawn > this.powerUpSpawnInterval) {
-            const powerUpSize = baseSize * 0.06; // Reduced from 12% to 6% of base size (half size)
-            
             const coffeePowerUp = {
-                x: Math.random() * (this.canvas.width - powerUpSize),
-                y: -powerUpSize,
-                width: powerUpSize,
-                height: powerUpSize,
-                speed: baseSize * 0.002,
+                x: Math.random() * (this.canvas.width - 36),
+                y: -36,
+                width: 36,
+                height: 36,
+                speed: 1.2, // Fixed speed
                 type: 'coffee',
-                radius: powerUpSize / 2,
+                radius: 18,
                 isPowerUp: true,
                 isMagnet: false
             };
@@ -1760,16 +1759,14 @@ class Game {
         
         // Generate magnet power-up independently
         if (now - this.lastMagnetPowerUpSpawn > this.powerUpSpawnInterval) {
-            const powerUpSize = baseSize * 0.06; // Reduced from 12% to 6% of base size (half size)
-            
             const magnetPowerUp = {
-                x: Math.random() * (this.canvas.width - powerUpSize),
-                y: -powerUpSize,
-                width: powerUpSize,
-                height: powerUpSize,
-                speed: baseSize * 0.002,
+                x: Math.random() * (this.canvas.width - 36),
+                y: -36,
+                width: 36,
+                height: 36,
+                speed: 1.2, // Fixed speed
                 type: 'magnet',
-                radius: powerUpSize / 2,
+                radius: 18,
                 isPowerUp: true,
                 isMagnet: true
             };
@@ -1800,7 +1797,7 @@ class Game {
             // Calculate number of lasers with 35% increase per 500 points
             const baseNumLasers = 2;
             const pointsMultiplier = Math.floor(pointsBeyond500 / 500);
-            const numLasers = Math.floor(baseNumLasers * Math.pow(1.35, pointsMultiplier));
+            const numLasers = Math.floor(baseNumLasers * Math.pow(1.45, pointsMultiplier)); // Changed from 1.35 to 1.45 for 10% more lasers
             
             // Generate laser beams
             for (let i = 0; i < numLasers; i++) {
@@ -1906,7 +1903,7 @@ class Game {
         // Generate oil spills every 8 seconds
         if (now - this.lastOilSpawn > 8000) {
             for (let i = 0; i < numSpills; i++) {
-                const radius = this.ball.radius * 3; // Oil spill is 3x the size of the hamster
+                const radius = 72; // Fixed radius (3x hamster size)
                 
                 // Create random shape points for the oil spill
                 const points = [];
@@ -1926,7 +1923,7 @@ class Game {
                     y: -radius, // Start above the screen
                     radius: radius,
                     points: points,
-                    speed: 2,
+                    speed: 2, // Fixed speed
                     active: true
                 };
                 
@@ -1958,12 +1955,18 @@ class Game {
             let rewardAmount;
             if (this.score >= 5000) {
                 rewardAmount = 1000;
-            } else if (this.score >= 3500) {
-                rewardAmount = 500;
-            } else if (this.score >= 2500) {
-                rewardAmount = 200;
+            } else if (this.score >= 3000) {
+                rewardAmount = 300;
+            } else if (this.score >= 2000) {
+                rewardAmount = 150;
             } else if (this.score >= 1500) {
                 rewardAmount = 100;
+            } else if (this.score >= 1000) {
+                rewardAmount = 50;
+            } else if (this.score >= 300) {
+                rewardAmount = 20;
+            } else if (this.score >= 100) {
+                rewardAmount = 5;
             } else {
                 console.log('Score too low for reward');
                 return;
@@ -1987,16 +1990,8 @@ class Game {
             
             // Create contract instance
             const rewardContract = new ethers.Contract(
-                CONFIG.REWARD_CONTRACT_ADDRESS,
-                [
-                    {
-                        "inputs": [{"name": "score", "type": "uint256"}],
-                        "name": "claimReward",
-                        "outputs": [],
-                        "stateMutability": "nonpayable",
-                        "type": "function"
-                    }
-                ],
+                this.REWARD_CONTRACT_ADDRESS,
+                this.REWARD_CONTRACT_ABI,
                 signer
             );
 
